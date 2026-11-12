@@ -1,0 +1,27 @@
+# Dependencias y artefactos
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/.vs
+**/.vscode
+*.user
+
+# SDK local de .NET (se instala con dotnet-install.ps1)
+.dotnet/
+dotnet-install.ps1
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+!frontend/.env.example
+
+# Sistema operativo y logs
+.DS_Store
+Thumbs.db
+*.log
+
+# Herramientas
+frontend/node_modules/.tmp
+frontend/tsconfig.tsbuildinfo

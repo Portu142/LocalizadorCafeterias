@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: localizador_cafes
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d localizador_cafes"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=localizador_cafes;Username=postgres;Password=${POSTGRES_PASSWORD:-postgres}
+      Cors__AllowedOrigins__0: http://localhost:8080
+      Database__AutoMigrate: "true"
+      ReverseProxy__TrustForwardedHeaders: "false"
+    ports:
+      - "5080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:5080
+        VITE_SITE_URL: http://localhost:8080/
+        VITE_GITHUB_URL: ${GITHUB_URL:-https://github.com}
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

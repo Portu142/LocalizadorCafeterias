@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-cream-100 text-coffee-950 antialiased;
+  }
+
+  ::selection {
+    @apply bg-caramel-400/30;
+  }
+
+  :where(a, button, [role='button']):focus-visible {
+    @apply outline-none ring-2 ring-caramel-500 ring-offset-2 ring-offset-cream-100;
+  }
+}
+
+.noscript-message {
+  margin: 4rem auto;
+  max-width: 32rem;
+  border-radius: 1rem;
+  border: 1px solid #e6d5c6;
+  background: #fff;
+  padding: 1.5rem;
+  font-family: Inter, system-ui, sans-serif;
+  color: #3f2d23;
+  text-align: center;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-coffee-800 px-5 py-2.5 text-sm font-semibold text-cream-50 transition hover:bg-coffee-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel-500 focus-visible:ring-offset-2;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-coffee-200 bg-white/70 px-4 py-2 text-sm font-medium text-coffee-800 transition hover:border-coffee-300 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel-500 focus-visible:ring-offset-2;
+  }
+
+  .card {
+    @apply rounded-3xl border border-coffee-100 bg-white/90 shadow-soft backdrop-blur;
+  }
+}
+
+.leaflet-container {
+  font-family: inherit;
+  background: #e8e0d5;
+}
+
+.custom-marker {
+  background: transparent;
+  border: 0;
+}
+
+.marker-pin {
+  width: 38px;
+  height: 38px;
+  border-radius: 9999px;
+  background: #3f2d23;
+  color: #fff7ed;
+  border: 3px solid #fdfbf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 10px 25px -8px rgba(36, 24, 17, 0.6);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.marker-pin:hover {
+  transform: scale(1.08);
+  background: #c47f3b;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 16px;
+  padding: 4px;
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px;
+  font-size: 13px;
+}

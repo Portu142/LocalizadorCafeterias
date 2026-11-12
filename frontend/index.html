@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Localizador de Cafés | Cafeterías de especialidad en Madrid</title>
+    <meta
+      name="description"
+      content="Descubre las mejores cafeterías de especialidad de Madrid: mapa interactivo, horarios, menús, precios y reseñas. Proyecto full-stack .NET + React."
+    />
+    <meta name="author" content="Localizador de Cafés" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#3f2d23" />
+    <meta name="color-scheme" content="light" />
+
+    <link rel="canonical" href="%SITE_URL%" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./og-image.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:site_name" content="Localizador de Cafés" />
+    <meta property="og:title" content="Localizador de Cafés | Cafeterías de especialidad en Madrid" />
+    <meta
+      property="og:description"
+      content="Mapa interactivo, horarios, menús y reseñas de cafeterías de especialidad en Madrid."
+    />
+    <meta property="og:url" content="%SITE_URL%" />
+    <meta property="og:image" content="%OG_IMAGE_URL%" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Localizador de Cafés: café de especialidad en Madrid"
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Localizador de Cafés | Madrid" />
+    <meta
+      name="twitter:description"
+      content="Encuentra cafeterías de especialidad en Madrid con mapa interactivo, menús y reseñas."
+    />
+    <meta name="twitter:image" content="%OG_IMAGE_URL%" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://tile.openstreetmap.org" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Localizador de Cafés",
+        "url": "%SITE_URL%",
+        "description": "Localizador de cafeterías de especialidad en Madrid con mapa interactivo, horarios, menús y reseñas.",
+        "applicationCategory": "TravelApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "es",
+        "isAccessibleForFree": true
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <div class="noscript-message">
+        <strong>Localizador de Cafés</strong> necesita JavaScript para mostrar el
+        mapa y las cafeterías. Actívalo en tu navegador para continuar.
+      </div>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

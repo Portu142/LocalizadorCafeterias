@@ -1,0 +1,57 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{C3535E8C-F1DA-4E87-A81D-2C60A657FB91}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalizadorCafes.Domain", "src\LocalizadorCafes.Domain\LocalizadorCafes.Domain.csproj", "{D6832984-04AC-4250-BD40-2E57C7141CAD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalizadorCafes.Application", "src\LocalizadorCafes.Application\LocalizadorCafes.Application.csproj", "{1D36DF31-CEA1-433D-8939-6A5AF2B10A5B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalizadorCafes.Infrastructure", "src\LocalizadorCafes.Infrastructure\LocalizadorCafes.Infrastructure.csproj", "{282B5103-CF62-45B5-B567-E9B94FDE030B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalizadorCafes.Api", "src\LocalizadorCafes.Api\LocalizadorCafes.Api.csproj", "{06CC4B78-722E-403D-846D-109A1D21B98E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{DA4E5E06-0BC9-48E1-B363-FAC443196D7A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalizadorCafes.UnitTests", "tests\LocalizadorCafes.UnitTests\LocalizadorCafes.UnitTests.csproj", "{CBA6CB08-773F-4C3F-B09D-D8C2A06380C9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D6832984-04AC-4250-BD40-2E57C7141CAD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D6832984-04AC-4250-BD40-2E57C7141CAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D6832984-04AC-4250-BD40-2E57C7141CAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D6832984-04AC-4250-BD40-2E57C7141CAD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D36DF31-CEA1-433D-8939-6A5AF2B10A5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D36DF31-CEA1-433D-8939-6A5AF2B10A5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D36DF31-CEA1-433D-8939-6A5AF2B10A5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D36DF31-CEA1-433D-8939-6A5AF2B10A5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{282B5103-CF62-45B5-B567-E9B94FDE030B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{282B5103-CF62-45B5-B567-E9B94FDE030B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{282B5103-CF62-45B5-B567-E9B94FDE030B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{282B5103-CF62-45B5-B567-E9B94FDE030B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06CC4B78-722E-403D-846D-109A1D21B98E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06CC4B78-722E-403D-846D-109A1D21B98E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06CC4B78-722E-403D-846D-109A1D21B98E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06CC4B78-722E-403D-846D-109A1D21B98E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CBA6CB08-773F-4C3F-B09D-D8C2A06380C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBA6CB08-773F-4C3F-B09D-D8C2A06380C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBA6CB08-773F-4C3F-B09D-D8C2A06380C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBA6CB08-773F-4C3F-B09D-D8C2A06380C9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D6832984-04AC-4250-BD40-2E57C7141CAD} = {C3535E8C-F1DA-4E87-A81D-2C60A657FB91}
+		{1D36DF31-CEA1-433D-8939-6A5AF2B10A5B} = {C3535E8C-F1DA-4E87-A81D-2C60A657FB91}
+		{282B5103-CF62-45B5-B567-E9B94FDE030B} = {C3535E8C-F1DA-4E87-A81D-2C60A657FB91}
+		{06CC4B78-722E-403D-846D-109A1D21B98E} = {C3535E8C-F1DA-4E87-A81D-2C60A657FB91}
+		{CBA6CB08-773F-4C3F-B09D-D8C2A06380C9} = {DA4E5E06-0BC9-48E1-B363-FAC443196D7A}
+	EndGlobalSection
+EndGlobal

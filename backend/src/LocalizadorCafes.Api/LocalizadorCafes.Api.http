@@ -1,0 +1,19 @@
+@LocalizadorCafes.Api_HostAddress = http://localhost:5080
+
+GET {{LocalizadorCafes.Api_HostAddress}}/api/cafes
+Accept: application/json
+
+###
+
+GET {{LocalizadorCafes.Api_HostAddress}}/api/cafes?search=Malasa%C3%B1a
+Accept: application/json
+
+###
+
+GET {{LocalizadorCafes.Api_HostAddress}}/api/cafes?lat=40.4168&lng=-3.7038&radiusKm=3
+Accept: application/json
+
+###
+
+GET {{LocalizadorCafes.Api_HostAddress}}/health
+Accept: application/json
