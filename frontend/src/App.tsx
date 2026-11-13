@@ -4,17 +4,20 @@ import { CafeList } from './components/CafeList';
 import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
+import { LocationFilter } from './components/LocationFilter';
 import { NeighborhoodFilter } from './components/NeighborhoodFilter';
-import { TechSection } from './components/TechSection';
 import { useCafe } from './hooks/useCafe';
 import { useCafes } from './hooks/useCafes';
 import { useFavorites } from './hooks/useFavorites';
+import { useGeolocation } from './hooks/useGeolocation';
+import { distanceKm } from './lib/geo';
 
 const MapView = lazy(() =>
   import('./components/MapView').then((module) => ({ default: module.MapView })),
 );
 
 const ALL_NEIGHBORHOODS = 'Todas';
+const RADIUS_KM = 5;
 
 function normalize(value: string) {
   return value
@@ -25,7 +28,11 @@ function normalize(value: string) {
 }
 
 function App() {
-  const { data: cafes = [], isLoading, isError, refetch } = useCafes();
+  const geo = useGeolocation();
+  const locationActive = geo.status === 'granted' && geo.coordinates !== null;
+  const userCoordinates = locationActive ? geo.coordinates : null;
+
+  const { data: cafes = [], isLoading, isError, refetch } = useCafes(userCoordinates);
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
 
   const [search, setSearch] = useState('');
@@ -42,10 +49,28 @@ function App() {
     return [ALL_NEIGHBORHOODS, ...unique];
   }, [cafes]);
 
+  const distances = useMemo(() => {
+    const map = new Map<string, number>();
+
+    if (userCoordinates) {
+      for (const cafe of cafes) {
+        map.set(
+          cafe.id,
+          distanceKm(userCoordinates, {
+            latitude: cafe.latitude,
+            longitude: cafe.longitude,
+          }),
+        );
+      }
+    }
+
+    return map;
+  }, [cafes, userCoordinates]);
+
   const filteredCafes = useMemo(() => {
     const term = normalize(search);
 
-    return cafes.filter((cafe) => {
+    const matches = cafes.filter((cafe) => {
       if (showFavorites && !favorites.includes(cafe.id)) {
         return false;
       }
@@ -64,7 +89,17 @@ function App() {
 
       return haystack.includes(term);
     });
-  }, [cafes, favorites, neighborhood, search, showFavorites]);
+
+    if (!userCoordinates) {
+      return matches;
+    }
+
+    return matches
+      .filter((cafe) => (distances.get(cafe.id) ?? Number.POSITIVE_INFINITY) <= RADIUS_KM)
+      .sort(
+        (a, b) => (distances.get(a.id) ?? 0) - (distances.get(b.id) ?? 0),
+      );
+  }, [cafes, distances, favorites, neighborhood, search, showFavorites, userCoordinates]);
 
   const effectiveSelectedId = useMemo(() => {
     if (selectedId && filteredCafes.some((cafe) => cafe.id === selectedId)) {
@@ -90,10 +125,24 @@ function App() {
     [cafes],
   );
 
+  const locationNotice =
+    geo.status === 'requesting'
+      ? 'Buscando tu ubicación…'
+      : locationActive
+        ? `Mostrando las cafeterías a menos de ${RADIUS_KM} km, ordenadas por cercanía.`
+        : geo.message;
+
+  const locationCausedEmpty =
+    locationActive &&
+    !showFavorites &&
+    !search.trim() &&
+    neighborhood === ALL_NEIGHBORHOODS;
+
   const resetFilters = () => {
     setSearch('');
     setNeighborhood(ALL_NEIGHBORHOODS);
     setShowFavorites(false);
+    geo.clear();
   };
 
   const handleSelect = (id: string) => {
@@ -130,19 +179,33 @@ function App() {
               Explora las cafeterías
             </h2>
             <p className="mt-1 text-sm text-coffee-600">
-              Filtra por barrio, guarda tus favoritos y descubre cada rincón.
+              Filtra por barrio, activa tu ubicación para ver lo más cercano y
+              guarda tus favoritos.
             </p>
           </div>
 
-          <NeighborhoodFilter
-            neighborhoods={neighborhoods}
-            active={neighborhood}
-            onChange={setNeighborhood}
-            showFavorites={showFavorites}
-            onToggleFavorites={() => setShowFavorites((value) => !value)}
-            favoritesCount={favorites.length}
-          />
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <LocationFilter
+              status={geo.status}
+              onRequest={geo.request}
+              onClear={geo.clear}
+            />
+            <NeighborhoodFilter
+              neighborhoods={neighborhoods}
+              active={neighborhood}
+              onChange={setNeighborhood}
+              showFavorites={showFavorites}
+              onToggleFavorites={() => setShowFavorites((value) => !value)}
+              favoritesCount={favorites.length}
+            />
+          </div>
         </div>
+
+        {locationNotice && (
+          <p className="mb-4 text-xs text-coffee-600" role="status">
+            {locationNotice}
+          </p>
+        )}
 
         {search && (
           <p className="mb-4 text-xs text-coffee-600" role="status">
@@ -164,17 +227,24 @@ function App() {
               cafes={filteredCafes}
               selectedId={effectiveSelectedId}
               favorites={favorites}
+              distances={distances}
               isLoading={isLoading}
               isError={isError}
               emptyTitle={
                 showFavorites
                   ? 'Todavía no tienes favoritos.'
-                  : 'No hay resultados con esos filtros.'
+                  : locationCausedEmpty
+                    ? 'No hay cafeterías cerca de ti.'
+                    : 'No hay resultados con esos filtros.'
               }
               emptyDescription={
                 showFavorites
                   ? 'Pulsa el corazón de una cafetería para guardarla aquí.'
-                  : 'Prueba con otro barrio o borra la búsqueda.'
+                  : locationCausedEmpty
+                    ? `No hay ninguna a menos de ${RADIUS_KM} km. Desactiva “Cerca de mí” para ver todas.`
+                    : locationActive
+                      ? 'Prueba con otro barrio, borra la búsqueda o quita “Cerca de mí”.'
+                      : 'Prueba con otro barrio o borra la búsqueda.'
               }
               onSelect={handleSelect}
               onToggleFavorite={toggleFavorite}
@@ -196,7 +266,13 @@ function App() {
             >
               <MapView
                 cafes={filteredCafes}
-                selectedId={effectiveSelectedId}
+                selectedId={selectedId}
+                userLocation={userCoordinates}
+                emptyMessage={
+                  locationCausedEmpty
+                    ? 'No hay cafeterías cerca de tu ubicación.'
+                    : 'No hay cafeterías en el mapa con estos filtros.'
+                }
                 onSelect={handleSelect}
               />
             </Suspense>
@@ -209,6 +285,9 @@ function App() {
           >
             <CafeDetail
               cafe={selectedCafe}
+              distanceKm={
+                effectiveSelectedId ? distances.get(effectiveSelectedId) : undefined
+              }
               isLoading={isDetailLoading}
               isError={isDetailError}
               onRetry={() => void refetchDetail()}
@@ -223,7 +302,6 @@ function App() {
         </div>
       </main>
 
-      <TechSection />
       <Footer />
     </div>
   );

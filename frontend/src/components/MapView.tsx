@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import { Star } from 'lucide-react';
+import type { Coordinates } from '../lib/geo';
 import type { CafeSummary } from '../types/cafe';
 
 const MADRID_CENTER: [number, number] = [40.4168, -3.7038];
@@ -14,9 +15,18 @@ const markerIcon = L.divIcon({
   popupAnchor: [0, -20],
 });
 
+const userMarkerIcon = L.divIcon({
+  className: 'custom-marker',
+  html: '<div class="user-dot" aria-hidden="true"></div>',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+});
+
 type MapViewProps = {
   cafes: CafeSummary[];
   selectedId: string | null;
+  userLocation?: Coordinates | null;
+  emptyMessage?: string;
   onSelect: (id: string) => void;
 };
 
@@ -37,28 +47,78 @@ function MapA11y() {
   return null;
 }
 
-function MapController({ selected }: { selected: CafeSummary | undefined }) {
+function MapController({
+  selectedId,
+  userLocation,
+  cafes,
+}: {
+  selectedId: string | null;
+  userLocation: Coordinates | null;
+  cafes: CafeSummary[];
+}) {
   const map = useMap();
+  const lastFitKey = useRef<string | null>(null);
+  const lastFlownId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!selected) {
+    const locationKey = userLocation
+      ? `${userLocation.latitude},${userLocation.longitude}`
+      : '';
+    const fitKey = `${locationKey}|${cafes.map((cafe) => cafe.id).join(',')}`;
+
+    if (lastFitKey.current === fitKey) {
+      return;
+    }
+    lastFitKey.current = fitKey;
+
+    if (cafes.length === 0) {
       return;
     }
 
-    map.flyTo([selected.latitude, selected.longitude], Math.max(map.getZoom(), 15), {
+    const points: [number, number][] = cafes.map(
+      (cafe) => [cafe.latitude, cafe.longitude] as [number, number],
+    );
+
+    if (userLocation) {
+      points.unshift([userLocation.latitude, userLocation.longitude]);
+    }
+
+    // Corta cualquier animación en curso (p. ej. un flyTo reciente) para que
+    // el encuadre se aplique siempre de forma limpia.
+    map.stop();
+    map.fitBounds(L.latLngBounds(points), {
+      padding: [48, 48],
+      maxZoom: 15,
+      animate: true,
+    });
+  }, [map, userLocation, cafes]);
+
+  useEffect(() => {
+    if (!selectedId || selectedId === lastFlownId.current) {
+      return;
+    }
+
+    const cafe = cafes.find((item) => item.id === selectedId);
+    if (!cafe) {
+      return;
+    }
+
+    lastFlownId.current = selectedId;
+    map.flyTo([cafe.latitude, cafe.longitude], Math.max(map.getZoom(), 15), {
       duration: 0.8,
     });
-  }, [map, selected]);
+  }, [map, selectedId, cafes]);
 
   return null;
 }
 
-export function MapView({ cafes, selectedId, onSelect }: MapViewProps) {
-  const selected = useMemo(
-    () => cafes.find((cafe) => cafe.id === selectedId),
-    [cafes, selectedId],
-  );
-
+export function MapView({
+  cafes,
+  selectedId,
+  userLocation,
+  emptyMessage = 'No hay cafeterías en el mapa con estos filtros.',
+  onSelect,
+}: MapViewProps) {
   return (
     <section
       className="relative h-full min-h-[320px] overflow-hidden rounded-3xl border border-coffee-100 shadow-soft"
@@ -76,14 +136,23 @@ export function MapView({ cafes, selectedId, onSelect }: MapViewProps) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapController selected={selected} />
+        <MapController selectedId={selectedId} userLocation={userLocation ?? null} cafes={cafes} />
         <MapA11y />
+
+        {userLocation && (
+          <Marker
+            position={[userLocation.latitude, userLocation.longitude]}
+            icon={userMarkerIcon}
+            title="Tu ubicación"
+          />
+        )}
 
         {cafes.map((cafe) => (
           <Marker
             key={cafe.id}
             position={[cafe.latitude, cafe.longitude]}
             icon={markerIcon}
+            keyboard={false}
             title={`${cafe.name} — ${cafe.neighborhood}`}
             alt={`${cafe.name}, ${cafe.address}`}
             eventHandlers={{ click: () => onSelect(cafe.id) }}
@@ -106,7 +175,7 @@ export function MapView({ cafes, selectedId, onSelect }: MapViewProps) {
       {cafes.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-cream-50/80 backdrop-blur-sm">
           <p className="rounded-2xl bg-white px-5 py-3 text-sm font-medium text-coffee-700 shadow-soft">
-            No hay cafeterías en el mapa con estos filtros.
+            {emptyMessage}
           </p>
         </div>
       )}

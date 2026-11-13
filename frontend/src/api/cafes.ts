@@ -1,5 +1,6 @@
 import { API_URL } from '../config';
 import { mockCafes } from '../data/mockCafes';
+import type { Coordinates } from '../lib/geo';
 import type {
   CafeDetail,
   CafeSummary,
@@ -83,9 +84,18 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function fetchCafes(): Promise<CafeSummary[]> {
+export async function fetchCafes(location?: Coordinates | null): Promise<CafeSummary[]> {
   if (API_URL) {
-    return request<CafeSummary[]>('/api/cafes');
+    const params = new URLSearchParams();
+
+    if (location) {
+      params.set('lat', String(location.latitude));
+      params.set('lng', String(location.longitude));
+      params.set('radiusKm', '5');
+    }
+
+    const query = params.toString();
+    return request<CafeSummary[]>(`/api/cafes${query ? `?${query}` : ''}`);
   }
 
   return mockCafes.map(withStoredReviews).map(toSummary);

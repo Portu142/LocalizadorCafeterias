@@ -56,6 +56,12 @@
   border: 0;
 }
 
+/* Los pines del mapa no son objetivos de teclado: la lista es la vía
+   accesible de selección. Cursor neutro porque varios pines se solapan. */
+.leaflet-marker-icon.leaflet-interactive {
+  cursor: default;
+}
+
 .marker-pin {
   width: 38px;
   height: 38px;
@@ -74,6 +80,17 @@
 .marker-pin:hover {
   transform: scale(1.08);
   background: #c47f3b;
+}
+
+.user-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: #2563eb;
+  border: 3px solid #ffffff;
+  box-shadow:
+    0 0 0 6px rgba(37, 99, 235, 0.2),
+    0 4px 12px rgba(37, 99, 235, 0.45);
 }
 
 .leaflet-popup-content-wrapper {

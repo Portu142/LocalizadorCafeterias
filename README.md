@@ -1,10 +1,16 @@
 # ☕ Localizador de Cafés
 
-Buscador de cafeterías de especialidad en Madrid. Proyecto **full-stack** pensado como pieza de portafolio: mapa interactivo, filtros por barrio, fichas con menú y horarios, favoritos y reseñas.
+Buscador de cafeterías de especialidad en Madrid. Proyecto **full-stack** pensado como pieza de portafolio: geolocalización para ordenar por cercanía, mapa interactivo, filtros por barrio, fichas con menú y horarios, favoritos y reseñas.
 
 **Demo:** _pendiente de publicar en GitHub Pages_ · **API:** ASP.NET Core 8 + PostgreSQL/PostGIS
 
 ![Vista de escritorio del Localizador de Cafés](docs/screenshots/desktop.png)
+
+### Cerca de mí
+
+Al activar «Usar mi ubicación», la app pide permiso al navegador (solo bajo petición del usuario), filtra por un radio de 5 km, ordena los resultados de menor a mayor distancia y marca tu posición en el mapa. Si el permiso se deniega, muestra un mensaje claro y permite reintentar.
+
+![Localizador de Cafés con la ubicación activa](docs/screenshots/location.png)
 
 ---
 
@@ -19,10 +25,11 @@ El objetivo era construir algo más que una landing: una aplicación real con se
 
 ### Funcionalidades
 
+- **Cerca de mí**: geolocalización del dispositivo con haversine, radio de 5 km y orden por distancia; estados de permiso concedido, denegado, no disponible y timeout.
 - Búsqueda por nombre, dirección o barrio, insensible a mayúsculas y acentos.
 - Filtro por barrio y vista de favoritos persistentes.
-- Mapa Leaflet/OpenStreetMap con marcadores sincronizados con el listado.
-- Ficha de cafetería: horario, teléfono, enlace a Google Maps, menú y reseñas.
+- Mapa Leaflet/OpenStreetMap con marcadores sincronizados con el listado, punto azul con tu posición y encuadre automático de los resultados.
+- Ficha de cafetería: distancia a tu posición, horario, teléfono, enlace a Google Maps, menú y reseñas.
 - Formulario de reseñas con validación en cliente y servidor, contador de caracteres y estados de éxito/error.
 - Valoración media y número de reseñas actualizados al publicar.
 - Diseño responsive (móvil, tablet, escritorio) y navegación por teclado.
@@ -86,6 +93,7 @@ Localizador_cafes/
 │   │   ├── components/
 │   │   ├── hooks/
 │   │   ├── api/
+│   │   ├── lib/
 │   │   ├── data/mockCafes.ts
 │   │   └── types/
 │   ├── public/
@@ -239,8 +247,8 @@ npm run build
 ```
 
 - TypeScript en modo estricto y build de producción correcto.
-- Bundle dividido: app principal ≈ 330 kB (101 kB gzip) y mapa ≈ 155 kB (46 kB gzip) cargado con `React.lazy`.
-- CSS ≈ 42 kB (12 kB gzip).
+- Bundle dividido: app principal ≈ 332 kB (102 kB gzip) y mapa ≈ 156 kB (46 kB gzip) cargado con `React.lazy`.
+- CSS ≈ 41 kB (12 kB gzip).
 
 ### Auditoría Lighthouse (build de producción)
 
@@ -257,6 +265,7 @@ Comprobaciones manuales realizadas:
 - Contraste de texto corregido (AA) y atributos ARIA válidos.
 - Estados de carga, error, vacío y reintento probados.
 - Búsqueda con acentos (`malasaña` → `Malasaña`), filtros combinados, favoritos y publicación de reseñas.
+- Flujo de geolocalización completo: concesión (orden por distancia + punto en el mapa), denegación (mensaje y reintento), apagado (vista original) y selección de ficha (zoom a la cafetería).
 - Cabeceras de seguridad en API (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, CSP) y CSP en el HTML estático.
 - Rate limiting en reseñas y validación de parámetros de búsqueda.
 

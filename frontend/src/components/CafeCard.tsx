@@ -1,9 +1,11 @@
-import { Heart, MapPin, Star } from 'lucide-react';
+import { Heart, MapPin, Navigation, Star } from 'lucide-react';
+import { formatDistance } from '../lib/geo';
 import { cn } from '../lib/utils';
 import type { CafeSummary } from '../types/cafe';
 
 type CafeCardProps = {
   cafe: CafeSummary;
+  distanceKm?: number;
   active: boolean;
   favorite: boolean;
   onSelect: () => void;
@@ -12,6 +14,7 @@ type CafeCardProps = {
 
 export function CafeCard({
   cafe,
+  distanceKm,
   active,
   favorite,
   onSelect,
@@ -35,6 +38,12 @@ export function CafeCard({
         >
           <h3 className="truncate font-semibold text-coffee-950">{cafe.name}</h3>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-coffee-500">
+            {typeof distanceKm === 'number' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-caramel-500/10 px-2 py-0.5 font-semibold text-caramel-700">
+                <Navigation className="h-3 w-3" aria-hidden="true" />
+                {formatDistance(distanceKm)}
+              </span>
+            )}
             <span className="inline-flex items-center gap-1 font-semibold text-caramel-600">
               <Star
                 className="h-3.5 w-3.5 fill-caramel-500 text-caramel-500"

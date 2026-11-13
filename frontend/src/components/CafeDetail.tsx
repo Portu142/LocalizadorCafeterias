@@ -6,9 +6,11 @@ import {
   Heart,
   MapPin,
   MessageSquare,
+  Navigation,
   Phone,
   UtensilsCrossed,
 } from 'lucide-react';
+import { formatDistance } from '../lib/geo';
 import { cn, formatDate, formatPrice, initials } from '../lib/utils';
 import type { CafeDetail as CafeDetailData } from '../types/cafe';
 import { ReviewForm } from './ReviewForm';
@@ -16,6 +18,7 @@ import { StarRating } from './StarRating';
 
 type CafeDetailProps = {
   cafe: CafeDetailData | undefined;
+  distanceKm?: number;
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
@@ -25,6 +28,7 @@ type CafeDetailProps = {
 
 export function CafeDetail({
   cafe,
+  distanceKm,
   isLoading,
   isError,
   onRetry,
@@ -125,6 +129,12 @@ export function CafeDetail({
             <p className="flex items-center gap-2">
               <Phone className="h-4 w-4 shrink-0 text-caramel-500" />
               {cafe.phone}
+            </p>
+          )}
+          {typeof distanceKm === 'number' && (
+            <p className="flex items-center gap-2 font-medium text-coffee-800">
+              <Navigation className="h-4 w-4 shrink-0 text-caramel-500" aria-hidden="true" />
+              Estás a {formatDistance(distanceKm)} de aquí
             </p>
           )}
         </div>
