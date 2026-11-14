@@ -5,6 +5,7 @@ import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { LocationFilter } from './components/LocationFilter';
+import { LocationBanner } from './components/LocationBanner';
 import { NeighborhoodFilter } from './components/NeighborhoodFilter';
 import { useCafe } from './hooks/useCafe';
 import { useCafes } from './hooks/useCafes';
@@ -171,6 +172,7 @@ function App() {
           ? 'No se pudieron cargar las cafeterías cercanas.'
           : `Mostrando las cafeterías a menos de ${RADIUS_KM} km, ordenadas por cercanía.`
       : geo.status === 'denied' ||
+          geo.status === 'blocked' ||
           geo.status === 'unavailable' ||
           geo.status === 'error'
         ? `${geo.message} Mientras tanto, mostramos cafeterías de Madrid como referencia.`
@@ -244,6 +246,10 @@ function App() {
             />
           </div>
         </div>
+
+        {!locationActive && !isLocating && (
+          <LocationBanner status={geo.status} onRequest={geo.request} />
+        )}
 
         {locationNotice && (
           <p className="mb-4 text-xs text-coffee-600" role="status">

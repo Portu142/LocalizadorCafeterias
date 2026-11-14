@@ -7,7 +7,7 @@ Buscador de cafeterías de especialidad cerca de ti. Proyecto **full-stack** pen
 
 ## Cerca de mí
 
-Al cargar la página se solicita permiso de ubicación automáticamente. Si lo concedes, la app busca cafeterías reales de OpenStreetMap en un radio de 5 km, las ordena de menor a mayor distancia y marca tu posición en el mapa. Si lo deniegas (o no está disponible), muestra un mensaje claro, permite reintentar con el botón «Usar mi ubicación» y, mientras tanto, enseña cafeterías de Madrid como referencia.
+Al cargar la página se solicita permiso de ubicación automáticamente. Si lo concedes, la app busca cafeterías reales de OpenStreetMap en un radio de 5 km, las ordena de menor a mayor distancia y marca tu posición en el mapa. Si lo deniegas (o el navegador bloquea la petición automática), aparece un aviso con el botón «Permitir ubicación»: al concederlo, la app se recentra sola en tu zona sin recargar. Mientras tanto, enseña cafeterías de Madrid como referencia.
 
 Los **favoritos no dependen de la ubicación**: se guarda la ficha del café en `localStorage`, así que siguen apareciendo aunque te muevas a otra ciudad o cambies de zona.
 
@@ -95,7 +95,20 @@ npm run build
 npm run preview
 ```
 
-#### 2. Backend + PostgreSQL local
+#### 2. Backend (arranca sin PostgreSQL)
+
+```bash
+cd backend
+dotnet run --project src/LocalizadorCafes.Api
+```
+
+- API: `http://localhost:5067`
+- Swagger (solo Development): `http://localhost:5067/swagger`
+- Health check: `http://localhost:5067/health`
+
+Si no hay PostgreSQL disponible, la API **arranca en modo demo** con las 6 cafeterías de ejemplo en memoria: todos los endpoints funcionan y las reseñas nuevas se pierden al reiniciar. El aviso aparece en la consola al iniciar.
+
+##### Con PostgreSQL + PostGIS
 
 Crea la base de datos y habilita PostGIS:
 
@@ -111,16 +124,7 @@ Ajusta la cadena de conexión en `backend/src/LocalizadorCafes.Api/appsettings.j
 ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=localizador_cafes;Username=postgres;Password=postgres"
 ```
 
-Arranca la API (aplica migraciones y seed automáticamente si `Database:AutoMigrate` es `true`):
-
-```bash
-cd backend
-dotnet run --project src/LocalizadorCafes.Api
-```
-
-- API: `http://localhost:5067`
-- Swagger (solo Development): `http://localhost:5067/swagger`
-- Health check: `http://localhost:5067/health`
+Al arrancar aplica las migraciones y el seed automáticamente si `Database:AutoMigrate` es `true`. Si prefieres que falle en vez de usar el modo demo, define `Database__AllowInMemoryFallback=false`.
 
 Después arranca el frontend apuntando a la API:
 
@@ -159,7 +163,8 @@ El servicio `db` espera a estar sano antes de arrancar la API; `Database__AutoMi
 | --- | --- | --- |
 | `ConnectionStrings__DefaultConnection` | `Host=localhost;...` | Cadena de conexión a PostgreSQL. |
 | `Database__AutoMigrate` | `true` | Aplica migraciones y seed al arrancar. |
-| `Cors__AllowedOrigins__0..n` | `localhost:5173`, `localhost:4173` | Orígenes permitidos. |
+| `Database__AllowInMemoryFallback` | `true` | Si no hay PostgreSQL, arranca en modo demo con datos en memoria. |
+| `Cors__AllowedOrigins__0..n` | `localhost:5173`, `localhost:4173`, `127.0.0.1:5173`, `127.0.0.1:4173` | Orígenes permitidos. |
 | `ReverseProxy__TrustForwardedHeaders` | `false` | Activar detrás de un proxy de confianza. |
 
 ### API
@@ -185,7 +190,7 @@ La validación devuelve `400` con `ValidationProblemDetails`; los parámetros ge
 
 ### Datos de ejemplo
 
-El seed incluye **6 cafeterías** en 4 barrios de Madrid (Huertas, Malasaña, Palacio, Conde Duque), con menús, horarios y **12 reseñas** iniciales. Los identificadores son deterministas para que los enlaces de ejemplo sean reproducibles.
+El seed incluye **6 cafeterías** en 4 barrios de Madrid (Huertas, Malasaña, Palacio, Conde Duque), con menús, horarios y **12 reseñas** iniciales. Los mismos datos alimentan el modo demo en memoria.
 
 ### Calidad y pruebas
 
@@ -196,9 +201,10 @@ cd backend
 dotnet test
 ```
 
-- 13 pruebas unitarias del validador de reseñas (autor, longitudes, rating y comentario).
+- 18 pruebas unitarias: validador de reseñas (autor, longitudes, rating y comentario) y repositorio en memoria (búsqueda, radio, reseñas y datos de ejemplo).
 - `dotnet build` sin advertencias ni errores.
 - Migración EF Core con PostGIS incluida en el repositorio.
+- Arranque verificado sin PostgreSQL (modo demo) y con la API respondiendo a listado, detalle, filtro por radio y creación de reseñas.
 
 #### Frontend
 
@@ -209,8 +215,8 @@ npm run build
 ```
 
 - TypeScript en modo estricto y build de producción correcto.
-- Bundle dividido: app principal ≈ 332 kB (102 kB gzip) y mapa ≈ 156 kB (46 kB gzip) cargado con `React.lazy`.
-- CSS ≈ 41 kB (12 kB gzip).
+- Bundle dividido: app principal ≈ 339 kB (104 kB gzip) y mapa ≈ 190 kB (54 kB gzip) cargado con `React.lazy`.
+- CSS ≈ 42 kB (12 kB gzip).
 
 ### Auditoría Lighthouse (build de producción)
 
@@ -248,10 +254,10 @@ El workflow `.github/workflows/backend.yml` compila y ejecuta las pruebas del ba
 ### Limitaciones conocidas
 
 - La demo de GitHub Pages funciona en **modo demo**: no hay backend público, por lo que las reseñas se guardan solo en el navegador. Los cafés provienen de APIs públicas de OpenStreetMap (Photon/Overpass), sujetas a disponibilidad.
-- El backend no se ha ejecutado contra una instancia real de PostgreSQL en el entorno de desarrollo local (no había Docker/PostgreSQL instalados); sí compila, pasa las pruebas y la migración está generada. El `docker-compose.yml` permite validarlo de extremo a extremo.
+- El backend se ha validado con el repositorio en memoria (modo demo); contra PostgreSQL real requiere Docker/PostgreSQL locales, pero el `docker-compose.yml` y la migración están listos para probarlo de extremo a extremo.
 - El mapa depende de OpenStreetMap; sin conexión, los tiles no cargan (el resto de la interfaz sigue funcionando).
 - `VITE_SITE_URL` debe sustituirse por la URL real antes de publicar.
-- La geolocalización requiere HTTPS (o `localhost`) y el permiso del usuario; si se deniega, la app funciona con la ubicación de referencia.
+- La geolocalización requiere HTTPS (o `localhost`) y el permiso del usuario. Algunos navegadores bloquean los avisos de permiso sin un gesto del usuario (Chrome aplica «quiet blocks»): en ese caso la app muestra el aviso con el botón «Permitir ubicación». Si el permiso está bloqueado de forma permanente, hay que abrirlo desde el candado de la barra de direcciones.
 
 ### Licencia
 

@@ -5,10 +5,29 @@ using LocalizadorCafes.Infrastructure;
 using LocalizadorCafes.Infrastructure.Persistence;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
+using Npgsql;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// La API puede arrancar sin PostgreSQL: si la base de datos no responde se
+// usa un repositorio en memoria con los datos de ejemplo (modo demo).
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var allowInMemoryFallback = builder.Configuration.GetValue("Database:AllowInMemoryFallback", true);
+var databaseAvailable = !EF.IsDesignTime &&
+    !string.IsNullOrWhiteSpace(connectionString) &&
+    await CanConnectAsync(connectionString!);
+var useInMemory = !EF.IsDesignTime && !databaseAvailable && allowInMemoryFallback;
+
+if (useInMemory)
+{
+    Console.WriteLine(
+        "\n⚠  No se pudo conectar con PostgreSQL. La API arranca en MODO DEMO con datos en memoria.\n" +
+        "   Las reseñas nuevas se pierden al reiniciar. Para usar PostgreSQL:\n" +
+        "   docker compose up -d db  (o ajusta ConnectionStrings__DefaultConnection).\n");
+}
 
 builder.Host.UseSerilog((context, services, configuration) =>
 {
@@ -20,7 +39,7 @@ builder.Host.UseSerilog((context, services, configuration) =>
 });
 
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, useInMemory);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -44,7 +63,13 @@ builder.Services.AddCors(options =>
 
         if (allowedOrigins is null || allowedOrigins.Length == 0)
         {
-            allowedOrigins = new[] { "http://localhost:5173", "http://localhost:4173" };
+            allowedOrigins = new[]
+            {
+                "http://localhost:5173",
+                "http://localhost:4173",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:4173"
+            };
         }
 
         policy
@@ -82,9 +107,18 @@ if (builder.Configuration.GetValue<bool>("ReverseProxy:TrustForwardedHeaders"))
     });
 }
 
-builder.Services
-    .AddHealthChecks()
-    .AddDbContextCheck<AppDbContext>();
+var healthChecks = builder.Services.AddHealthChecks();
+
+if (useInMemory)
+{
+    healthChecks.AddCheck(
+        "database",
+        () => HealthCheckResult.Healthy("Modo demo con datos en memoria"));
+}
+else
+{
+    healthChecks.AddDbContextCheck<AppDbContext>();
+}
 
 builder.Services.AddProblemDetails();
 
@@ -112,7 +146,7 @@ app.UseRateLimiter();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
-if (!EF.IsDesignTime && app.Configuration.GetValue<bool>("Database:AutoMigrate"))
+if (!useInMemory && !EF.IsDesignTime && app.Configuration.GetValue<bool>("Database:AutoMigrate"))
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -121,3 +155,18 @@ if (!EF.IsDesignTime && app.Configuration.GetValue<bool>("Database:AutoMigrate")
 }
 
 app.Run();
+
+static async Task<bool> CanConnectAsync(string connectionString)
+{
+    try
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(timeout.Token);
+        return true;
+    }
+    catch
+    {
+        return false;
+    }
+}

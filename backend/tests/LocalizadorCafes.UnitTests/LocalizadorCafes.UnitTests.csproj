@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\LocalizadorCafes.Application\LocalizadorCafes.Application.csproj" />
     <ProjectReference Include="..\..\src\LocalizadorCafes.Domain\LocalizadorCafes.Domain.csproj" />
+    <ProjectReference Include="..\..\src\LocalizadorCafes.Infrastructure\LocalizadorCafes.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

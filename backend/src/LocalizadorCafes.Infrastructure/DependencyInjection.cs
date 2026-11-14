@@ -11,8 +11,18 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        bool useInMemory = false)
     {
+        if (useInMemory)
+        {
+            // Sin PostgreSQL la API sigue siendo funcional con datos de ejemplo.
+            services.AddSingleton<ICafeRepository>(_ =>
+                new InMemoryCafeRepository(DemoData.CreateCafes()));
+
+            return services;
+        }
+
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException(
                 "No se encontró la cadena de conexión 'DefaultConnection'.");
