@@ -38,7 +38,6 @@ services:
       args:
         VITE_API_URL: http://localhost:5080
         VITE_SITE_URL: http://localhost:8080/
-        VITE_GITHUB_URL: ${GITHUB_URL:-https://github.com}
     ports:
       - "8080:80"
     depends_on:

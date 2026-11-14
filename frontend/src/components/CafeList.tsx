@@ -11,8 +11,9 @@ type CafeListProps = {
   isError: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
+  sourceNote?: string;
   onSelect: (id: string) => void;
-  onToggleFavorite: (id: string) => void;
+  onToggleFavorite: (cafe: CafeSummary) => void;
   onRetry: () => void;
   onClearFilters: () => void;
 };
@@ -26,6 +27,7 @@ export function CafeList({
   isError,
   emptyTitle = 'No hay resultados con esos filtros.',
   emptyDescription = 'Prueba con otro barrio o borra la búsqueda.',
+  sourceNote = 'Datos de ejemplo de Madrid',
   onSelect,
   onToggleFavorite,
   onRetry,
@@ -102,7 +104,7 @@ export function CafeList({
                   active={cafe.id === selectedId}
                   favorite={favorites.includes(cafe.id)}
                   onSelect={() => onSelect(cafe.id)}
-                  onToggleFavorite={() => onToggleFavorite(cafe.id)}
+                  onToggleFavorite={() => onToggleFavorite(cafe)}
                 />
               ))}
             </div>
@@ -117,7 +119,7 @@ export function CafeList({
 
       <div className="border-t border-coffee-100 px-5 py-3 text-[11px] text-coffee-500">
         <span className="inline-flex items-center gap-1.5">
-          <Coffee className="h-3 w-3" aria-hidden="true" /> Datos de ejemplo de Madrid
+          <Coffee className="h-3 w-3" aria-hidden="true" /> {sourceNote}
         </span>
       </div>
     </section>

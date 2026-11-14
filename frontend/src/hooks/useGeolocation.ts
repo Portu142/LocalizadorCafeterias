@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Coordinates } from '../lib/geo';
 
 export type GeolocationStatus =
@@ -18,6 +18,11 @@ type GeolocationValue = {
 export type GeolocationState = GeolocationValue & {
   request: () => void;
   clear: () => void;
+};
+
+type UseGeolocationOptions = {
+  /** Pide la ubicación automáticamente al montar (una sola vez por carga). */
+  autoRequest?: boolean;
 };
 
 const PERMISSION_DENIED = 1;
@@ -57,12 +62,18 @@ function describeError(error: GeolocationPositionError): GeolocationValue {
   };
 }
 
-export function useGeolocation(): GeolocationState {
+export function useGeolocation({
+  autoRequest = false,
+}: UseGeolocationOptions = {}): GeolocationState {
   const [state, setState] = useState<GeolocationValue>({
     status: 'idle',
     coordinates: null,
     message: null,
   });
+
+  // Evita repetir la petición automática (incluye el doble montaje de
+  // StrictMode y los re-renderizados posteriores).
+  const autoRequested = useRef(false);
 
   const request = useCallback(() => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
@@ -99,6 +110,15 @@ export function useGeolocation(): GeolocationState {
   const clear = useCallback(() => {
     setState({ status: 'idle', coordinates: null, message: null });
   }, []);
+
+  useEffect(() => {
+    if (!autoRequest || autoRequested.current) {
+      return;
+    }
+
+    autoRequested.current = true;
+    request();
+  }, [autoRequest, request]);
 
   return { ...state, request, clear };
 }

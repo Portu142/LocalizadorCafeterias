@@ -82,6 +82,29 @@
   background: #c47f3b;
 }
 
+/* Contadores de agrupación (leaflet.markercluster): evitan que los pines de
+   zonas densas se solapen y muestran cuántos cafés hay en cada zona. */
+.cluster-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: #c47f3b;
+  color: #fdfbf8;
+  border: 3px solid #fdfbf8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: zoom-in;
+  box-shadow: 0 10px 25px -8px rgba(36, 24, 17, 0.6);
+  transition: transform 0.15s ease;
+}
+
+.cluster-badge:hover {
+  transform: scale(1.06);
+}
+
 .user-dot {
   width: 22px;
   height: 22px;

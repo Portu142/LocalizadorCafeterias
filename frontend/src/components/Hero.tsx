@@ -33,9 +33,9 @@ export function Hero({ search, onSearchChange, stats }: HeroProps) {
           </h1>
 
           <p className="mt-5 max-w-2xl text-base leading-7 text-coffee-700 sm:text-lg">
-            Descubre cafeterías de especialidad en Madrid, consulta horarios,
-            menús y reseñas reales. Activa tu ubicación y ordena los resultados
-            por cercanía para encontrar el sitio perfecto cerca de ti.
+            Descubre cafeterías de especialidad cerca de ti, consulta horarios,
+            menús y reseñas. Concede tu ubicación y ordena los resultados por
+            cercanía para encontrar el sitio perfecto.
           </p>
 
           <form

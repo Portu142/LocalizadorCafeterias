@@ -1,11 +1,15 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
-import { Star } from 'lucide-react';
+import 'leaflet.markercluster';
+import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
 import type { Coordinates } from '../lib/geo';
 import type { CafeSummary } from '../types/cafe';
 
 const MADRID_CENTER: [number, number] = [40.4168, -3.7038];
+
+/** Máximo de cafeterías que caben en el encuadre automático: si entran todas
+ *  en zonas muy densas el zoom baja tanto que los marcadores se solapan. */
+const FIT_LIMIT = 15;
 
 const markerIcon = L.divIcon({
   className: 'custom-marker',
@@ -27,6 +31,7 @@ type MapViewProps = {
   selectedId: string | null;
   userLocation?: Coordinates | null;
   emptyMessage?: string;
+  isLoading?: boolean;
   onSelect: (id: string) => void;
 };
 
@@ -61,21 +66,32 @@ function MapController({
   const lastFlownId = useRef<string | null>(null);
 
   useEffect(() => {
+    // El encuadre se limita a los más cercanos: con muchas cafeterías en la
+    // zona el zoom bajaba tanto que los marcadores se solapaban.
+    const fitCafes = cafes.slice(0, FIT_LIMIT);
     const locationKey = userLocation
       ? `${userLocation.latitude},${userLocation.longitude}`
       : '';
-    const fitKey = `${locationKey}|${cafes.map((cafe) => cafe.id).join(',')}`;
+    const fitKey = `${locationKey}|${fitCafes.map((cafe) => cafe.id).join(',')}`;
 
     if (lastFitKey.current === fitKey) {
       return;
     }
     lastFitKey.current = fitKey;
 
-    if (cafes.length === 0) {
+    if (fitCafes.length === 0) {
+      // Sin resultados: encuadra la posición del usuario para que su punto
+      // se vea aunque esté lejos de Madrid (datos de ejemplo).
+      if (userLocation) {
+        map.stop();
+        map.setView([userLocation.latitude, userLocation.longitude], 14, {
+          animate: true,
+        });
+      }
       return;
     }
 
-    const points: [number, number][] = cafes.map(
+    const points: [number, number][] = fitCafes.map(
       (cafe) => [cafe.latitude, cafe.longitude] as [number, number],
     );
 
@@ -112,18 +128,100 @@ function MapController({
   return null;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+/** Popup en HTML porque los marcadores se crean de forma imperativa. */
+function popupHtml(cafe: CafeSummary): string {
+  const rating =
+    cafe.reviewCount > 0
+      ? `<p class="mt-2 text-xs font-semibold text-caramel-600">★ ${cafe.rating
+          .toFixed(1)
+          .replace('.', ',')} · ${cafe.reviewCount} reseñas</p>`
+      : `<p class="mt-2 text-xs text-coffee-500">Sin reseñas</p>`;
+
+  return (
+    `<div class="min-w-[180px]">` +
+    `<p class="font-semibold text-coffee-950">${escapeHtml(cafe.name)}</p>` +
+    `<p class="mt-1 text-xs text-coffee-500">${escapeHtml(cafe.address)}</p>` +
+    `${rating}</div>`
+  );
+}
+
+/**
+ * Marcadores agrupados: con datos reales la densidad de cafeterías hace que
+ * los pines se solapen, así que se agrupan en contadores que se abren al
+ * acercar el mapa.
+ */
+function CafeClusterLayer({
+  cafes,
+  onSelect,
+}: {
+  cafes: CafeSummary[];
+  onSelect: (id: string) => void;
+}) {
+  const map = useMap();
+  const onSelectRef = useRef(onSelect);
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
+
+  useEffect(() => {
+    const group = L.markerClusterGroup({
+      // 45 px cubre el ancho del pin (38 px): cualquier par que se solaparía
+      // queda agrupado, mientras que los mocks del demo (≥380 m) siguen sueltos.
+      maxClusterRadius: 45,
+      showCoverageOnHover: false,
+      iconCreateFunction: (cluster) =>
+        L.divIcon({
+          html: `<div class="cluster-badge">${cluster.getChildCount()}</div>`,
+          className: 'custom-marker',
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+        }),
+    });
+
+    for (const cafe of cafes) {
+      const marker = L.marker([cafe.latitude, cafe.longitude], {
+        icon: markerIcon,
+        keyboard: false,
+        title: cafe.name,
+      });
+      marker.bindPopup(popupHtml(cafe));
+      marker.on('click', () => onSelectRef.current(cafe.id));
+      group.addLayer(marker);
+    }
+
+    map.addLayer(group);
+
+    return () => {
+      map.removeLayer(group);
+    };
+  }, [map, cafes]);
+
+  return null;
+}
+
 export function MapView({
   cafes,
   selectedId,
   userLocation,
   emptyMessage = 'No hay cafeterías en el mapa con estos filtros.',
+  isLoading = false,
   onSelect,
 }: MapViewProps) {
   return (
     <section
       className="relative h-full min-h-[320px] overflow-hidden rounded-3xl border border-coffee-100 shadow-soft"
       role="region"
-      aria-label="Mapa de cafeterías en Madrid"
+      aria-label="Mapa de cafeterías"
     >
       <MapContainer
         center={MADRID_CENTER}
@@ -147,35 +245,13 @@ export function MapView({
           />
         )}
 
-        {cafes.map((cafe) => (
-          <Marker
-            key={cafe.id}
-            position={[cafe.latitude, cafe.longitude]}
-            icon={markerIcon}
-            keyboard={false}
-            title={`${cafe.name} — ${cafe.neighborhood}`}
-            alt={`${cafe.name}, ${cafe.address}`}
-            eventHandlers={{ click: () => onSelect(cafe.id) }}
-          >
-            <Popup>
-              <div className="min-w-[180px]">
-                <p className="font-semibold text-coffee-950">{cafe.name}</p>
-                <p className="mt-1 text-xs text-coffee-500">{cafe.address}</p>
-                <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-caramel-600">
-                  <Star className="h-3 w-3 fill-caramel-500 text-caramel-500" />
-                  {cafe.rating.toFixed(1).replace('.', ',')} ·{' '}
-                  {cafe.reviewCount} reseñas
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        <CafeClusterLayer cafes={cafes} onSelect={onSelect} />
       </MapContainer>
 
       {cafes.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-cream-50/80 backdrop-blur-sm">
           <p className="rounded-2xl bg-white px-5 py-3 text-sm font-medium text-coffee-700 shadow-soft">
-            {emptyMessage}
+            {isLoading ? 'Buscando cafeterías cerca de ti…' : emptyMessage}
           </p>
         </div>
       )}

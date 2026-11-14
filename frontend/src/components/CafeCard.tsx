@@ -44,21 +44,34 @@ export function CafeCard({
                 {formatDistance(distanceKm)}
               </span>
             )}
-            <span className="inline-flex items-center gap-1 font-semibold text-caramel-600">
-              <Star
-                className="h-3.5 w-3.5 fill-caramel-500 text-caramel-500"
-                aria-hidden="true"
-              />
-              {cafe.rating.toFixed(1).replace('.', ',')}
-            </span>
-            <span>({cafe.reviewCount})</span>
-            <span className="text-coffee-300" aria-hidden="true">
-              ·
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="h-3 w-3" aria-hidden="true" />
-              {cafe.neighborhood}
-            </span>
+            {cafe.reviewCount > 0 ? (
+              <>
+                <span className="inline-flex items-center gap-1 font-semibold text-caramel-600">
+                  <Star
+                    className="h-3.5 w-3.5 fill-caramel-500 text-caramel-500"
+                    aria-hidden="true"
+                  />
+                  {cafe.rating.toFixed(1).replace('.', ',')}
+                </span>
+                <span>({cafe.reviewCount})</span>
+              </>
+            ) : (
+              <span className="inline-flex items-center gap-1 font-medium text-coffee-500">
+                <Star className="h-3.5 w-3.5 text-coffee-300" aria-hidden="true" />
+                Sin reseñas
+              </span>
+            )}
+            {cafe.neighborhood && (
+              <>
+                <span className="text-coffee-300" aria-hidden="true">
+                  ·
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="h-3 w-3" aria-hidden="true" />
+                  {cafe.neighborhood}
+                </span>
+              </>
+            )}
           </div>
           <p className="mt-2 line-clamp-1 text-xs text-coffee-500">{cafe.address}</p>
         </button>

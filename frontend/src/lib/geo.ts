@@ -35,3 +35,11 @@ export function formatDistance(km: number): string {
 
   return `${Math.round(km)} km`;
 }
+
+/** Ubicación predeterminada (Sol, Madrid) que se usa cuando el usuario aún no
+ *  ha activado “Cerca de mí”. Evita mostrar datos de ejemplo estáticos y en su
+ *  lugar carga cafeterías reales de OpenStreetMap cercanas a ese punto. */
+export const DEFAULT_LOCATION: Coordinates = {
+  latitude: 40.41686,
+  longitude: -3.70379,
+};

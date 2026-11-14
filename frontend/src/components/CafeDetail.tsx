@@ -74,27 +74,36 @@ export function CafeDetail({
   }
 
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${cafe.latitude},${cafe.longitude}`;
+  // Sin menú (p. ej. cafés de OpenStreetMap) solo se muestra la pestaña de reseñas.
+  const hasMenu = cafe.menu.length > 0;
+  const visibleTab = hasMenu ? activeTab : 'reviews';
 
   return (
     <section className="card flex h-full flex-col overflow-hidden">
       <div className="border-b border-coffee-100 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <span className="inline-flex rounded-full bg-cream-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-coffee-500">
-              {cafe.neighborhood}
-            </span>
+            {cafe.neighborhood && (
+              <span className="inline-flex rounded-full bg-cream-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-coffee-500">
+                {cafe.neighborhood}
+              </span>
+            )}
             <h2 className="mt-2 font-display text-2xl font-semibold leading-tight text-coffee-950">
               {cafe.name}
             </h2>
-            <div className="mt-2 flex items-center gap-2">
-              <StarRating value={cafe.rating} />
-              <span className="text-sm font-semibold text-coffee-900">
-                {cafe.rating.toFixed(1).replace('.', ',')}
-              </span>
-              <span className="text-xs text-coffee-500">
-                ({cafe.reviewCount} reseñas)
-              </span>
-            </div>
+            {cafe.reviewCount > 0 ? (
+              <div className="mt-2 flex items-center gap-2">
+                <StarRating value={cafe.rating} />
+                <span className="text-sm font-semibold text-coffee-900">
+                  {cafe.rating.toFixed(1).replace('.', ',')}
+                </span>
+                <span className="text-xs text-coffee-500">
+                  ({cafe.reviewCount} reseñas)
+                </span>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-coffee-500">Sin reseñas todavía</p>
+            )}
           </div>
 
           <button
@@ -121,10 +130,12 @@ export function CafeDetail({
             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-caramel-500" />
             {cafe.address}
           </p>
-          <p className="flex items-center gap-2">
-            <Clock className="h-4 w-4 shrink-0 text-caramel-500" />
-            {cafe.hours}
-          </p>
+          {cafe.hours && (
+            <p className="flex items-center gap-2">
+              <Clock className="h-4 w-4 shrink-0 text-caramel-500" />
+              {cafe.hours}
+            </p>
+          )}
           {cafe.phone && (
             <p className="flex items-center gap-2">
               <Phone className="h-4 w-4 shrink-0 text-caramel-500" />
@@ -154,46 +165,48 @@ export function CafeDetail({
         role="tablist"
         aria-label="Información de la cafetería"
       >
-        <button
-          type="button"
-          role="tab"
-          id="tab-menu"
-          aria-selected={activeTab === 'menu'}
-          aria-controls="panel-menu"
-          tabIndex={activeTab === 'menu' ? 0 : -1}
-          onClick={() => setActiveTab('menu')}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowRight') {
-              setActiveTab('reviews');
-              document.getElementById('tab-reviews')?.focus();
-            }
-          }}
-          className={cn(
-            'inline-flex items-center gap-2 rounded-t-xl px-3 py-2 text-sm font-semibold transition',
-            activeTab === 'menu'
-              ? 'border-b-2 border-caramel-500 text-coffee-950'
-              : 'text-coffee-500 hover:text-coffee-800',
-          )}
-        >
-          <UtensilsCrossed className="h-4 w-4" aria-hidden="true" /> Menú
-        </button>
+        {hasMenu && (
+          <button
+            type="button"
+            role="tab"
+            id="tab-menu"
+            aria-selected={visibleTab === 'menu'}
+            aria-controls="panel-menu"
+            tabIndex={visibleTab === 'menu' ? 0 : -1}
+            onClick={() => setActiveTab('menu')}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowRight') {
+                setActiveTab('reviews');
+                document.getElementById('tab-reviews')?.focus();
+              }
+            }}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-t-xl px-3 py-2 text-sm font-semibold transition',
+              visibleTab === 'menu'
+                ? 'border-b-2 border-caramel-500 text-coffee-950'
+                : 'text-coffee-500 hover:text-coffee-800',
+            )}
+          >
+            <UtensilsCrossed className="h-4 w-4" aria-hidden="true" /> Menú
+          </button>
+        )}
         <button
           type="button"
           role="tab"
           id="tab-reviews"
-          aria-selected={activeTab === 'reviews'}
+          aria-selected={visibleTab === 'reviews'}
           aria-controls="panel-reviews"
-          tabIndex={activeTab === 'reviews' ? 0 : -1}
+          tabIndex={visibleTab === 'reviews' ? 0 : -1}
           onClick={() => setActiveTab('reviews')}
           onKeyDown={(event) => {
-            if (event.key === 'ArrowLeft') {
+            if (event.key === 'ArrowLeft' && hasMenu) {
               setActiveTab('menu');
               document.getElementById('tab-menu')?.focus();
             }
           }}
           className={cn(
             'inline-flex items-center gap-2 rounded-t-xl px-3 py-2 text-sm font-semibold transition',
-            activeTab === 'reviews'
+            visibleTab === 'reviews'
               ? 'border-b-2 border-caramel-500 text-coffee-950'
               : 'text-coffee-500 hover:text-coffee-800',
           )}
@@ -203,39 +216,41 @@ export function CafeDetail({
       </div>
 
       <div className="flex-1 overflow-y-auto p-5">
-        <div
-          id="panel-menu"
-          role="tabpanel"
-          aria-labelledby="tab-menu"
-          hidden={activeTab !== 'menu'}
-        >
-          <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-coffee-500">
-            Menú destacado
-          </h3>
-          <ul className="mt-3 divide-y divide-coffee-100">
-            {cafe.menu.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center justify-between gap-4 py-3"
-              >
-                <span className="text-sm text-coffee-800">{item.name}</span>
-                <span className="shrink-0 text-sm font-semibold text-coffee-950">
-                  {formatPrice(item.price)}
-                </span>
-              </li>
-            ))}
-          </ul>
+        {hasMenu && (
+          <div
+            id="panel-menu"
+            role="tabpanel"
+            aria-labelledby="tab-menu"
+            hidden={visibleTab !== 'menu'}
+          >
+            <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-coffee-500">
+              Menú destacado
+            </h3>
+            <ul className="mt-3 divide-y divide-coffee-100">
+              {cafe.menu.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-center justify-between gap-4 py-3"
+                >
+                  <span className="text-sm text-coffee-800">{item.name}</span>
+                  <span className="shrink-0 text-sm font-semibold text-coffee-950">
+                    {formatPrice(item.price)}
+                  </span>
+                </li>
+              ))}
+            </ul>
 
-          <div className="mt-6 rounded-2xl bg-cream-100 p-4 text-xs leading-5 text-coffee-600">
-            Precios orientativos. El menú puede variar según la temporada.
+            <div className="mt-6 rounded-2xl bg-cream-100 p-4 text-xs leading-5 text-coffee-600">
+              Precios orientativos. El menú puede variar según la temporada.
+            </div>
           </div>
-        </div>
+        )}
 
         <div
           id="panel-reviews"
           role="tabpanel"
           aria-labelledby="tab-reviews"
-          hidden={activeTab !== 'reviews'}
+          hidden={visibleTab !== 'reviews'}
         >
           <div className="space-y-3">
             {cafe.reviews.length === 0 ? (

@@ -10,7 +10,7 @@ import { useCafe } from './hooks/useCafe';
 import { useCafes } from './hooks/useCafes';
 import { useFavorites } from './hooks/useFavorites';
 import { useGeolocation } from './hooks/useGeolocation';
-import { distanceKm } from './lib/geo';
+import { DEFAULT_LOCATION, distanceKm } from './lib/geo';
 
 const MapView = lazy(() =>
   import('./components/MapView').then((module) => ({ default: module.MapView })),
@@ -28,12 +28,21 @@ function normalize(value: string) {
 }
 
 function App() {
-  const geo = useGeolocation();
+  // Pide la ubicación nada más cargar: si el usuario la concede, la app carga
+  // automáticamente los cafés reales de su zona. Si la deniega, se mantiene la
+  // ubicación de referencia con un aviso claro y el botón para reintentar.
+  const geo = useGeolocation({ autoRequest: true });
+  const isLocating = geo.status === 'requesting';
   const locationActive = geo.status === 'granted' && geo.coordinates !== null;
   const userCoordinates = locationActive ? geo.coordinates : null;
 
-  const { data: cafes = [], isLoading, isError, refetch } = useCafes(userCoordinates);
-  const { favorites, toggleFavorite, isFavorite } = useFavorites();
+  // Mientras se resuelve el permiso no se consulta la ubicación de referencia:
+  // evita un parpadeo de cafeterías de Madrid antes de las de tu zona.
+  const { data: cafes = [], isLoading, isError, refetch } = useCafes(
+    userCoordinates ?? DEFAULT_LOCATION,
+    { enabled: !isLocating },
+  );
+  const { favorites, favoriteIds, toggleFavorite, isFavorite } = useFavorites();
 
   const [search, setSearch] = useState('');
   const [neighborhood, setNeighborhood] = useState(ALL_NEIGHBORHOODS);
@@ -42,9 +51,9 @@ function App() {
   const detailRef = useRef<HTMLDivElement>(null);
 
   const neighborhoods = useMemo(() => {
-    const unique = Array.from(new Set(cafes.map((cafe) => cafe.neighborhood))).sort(
-      (a, b) => a.localeCompare(b, 'es'),
-    );
+    const unique = Array.from(
+      new Set(cafes.map((cafe) => cafe.neighborhood).filter(Boolean)),
+    ).sort((a, b) => a.localeCompare(b, 'es'));
 
     return [ALL_NEIGHBORHOODS, ...unique];
   }, [cafes]);
@@ -52,29 +61,41 @@ function App() {
   const distances = useMemo(() => {
     const map = new Map<string, number>();
 
-    if (userCoordinates) {
-      for (const cafe of cafes) {
-        map.set(
-          cafe.id,
-          distanceKm(userCoordinates, {
-            latitude: cafe.latitude,
-            longitude: cafe.longitude,
-          }),
-        );
-      }
+    // Las distancias se calculan respecto a la ubicación REAL del usuario
+    // (no a la predeterminada), para que el punto azul del mapa y la ficha
+    // muestren la distancia correcta cuando se active "Cerca de mí".
+    const reference = userCoordinates ?? DEFAULT_LOCATION;
+
+    for (const cafe of cafes) {
+      map.set(
+        cafe.id,
+        distanceKm(reference, {
+          latitude: cafe.latitude,
+          longitude: cafe.longitude,
+        }),
+      );
     }
 
     return map;
   }, [cafes, userCoordinates]);
 
+  // Favoritos con datos frescos cuando el café está en la lista actual; si no
+  // (porque estás en otra zona), se usa la ficha guardada en localStorage.
+  const favoriteCafes = useMemo(() => {
+    const byId = new Map(cafes.map((cafe) => [cafe.id, cafe]));
+
+    return favorites.map((favorite) => byId.get(favorite.id) ?? favorite);
+  }, [cafes, favorites]);
+
   const filteredCafes = useMemo(() => {
     const term = normalize(search);
 
-    const matches = cafes.filter((cafe) => {
-      if (showFavorites && !favorites.includes(cafe.id)) {
-        return false;
-      }
+    // En favoritos se parte de las fichas guardadas, no de los cafés de la
+    // ubicación actual: así la lista no cambia al moverte de zona. Si el café
+    // también está en los resultados actuales se usa su versión más reciente.
+    const base = showFavorites ? favoriteCafes : cafes;
 
+    const matches = base.filter((cafe) => {
       if (neighborhood !== ALL_NEIGHBORHOODS && cafe.neighborhood !== neighborhood) {
         return false;
       }
@@ -90,16 +111,25 @@ function App() {
       return haystack.includes(term);
     });
 
-    if (!userCoordinates) {
+    // La vista de favoritos es independiente de la ubicación: nunca se filtra
+    // por radio ni se ordena por cercanía.
+    if (showFavorites) {
       return matches;
     }
 
-    return matches
-      .filter((cafe) => (distances.get(cafe.id) ?? Number.POSITIVE_INFINITY) <= RADIUS_KM)
-      .sort(
-        (a, b) => (distances.get(a.id) ?? 0) - (distances.get(b.id) ?? 0),
-      );
-  }, [cafes, distances, favorites, neighborhood, search, showFavorites, userCoordinates]);
+    // Con ubicación activa, se filtra por radio y ordena por cercanía.
+    if (userCoordinates) {
+      return matches
+        .filter((cafe) => (distances.get(cafe.id) ?? Number.POSITIVE_INFINITY) <= RADIUS_KM)
+        .sort(
+          (a, b) => (distances.get(a.id) ?? 0) - (distances.get(b.id) ?? 0),
+        );
+    }
+
+    // Sin ubicación del usuario, se muestra la lista completa (ya cargada
+    // desde la ubicación predeterminada) sin radio de cercanía.
+    return matches;
+  }, [cafes, distances, favoriteCafes, neighborhood, search, showFavorites, userCoordinates]);
 
   const effectiveSelectedId = useMemo(() => {
     if (selectedId && filteredCafes.some((cafe) => cafe.id === selectedId)) {
@@ -119,18 +149,32 @@ function App() {
   const stats = useMemo(
     () => ({
       cafes: cafes.length,
-      neighborhoods: new Set(cafes.map((cafe) => cafe.neighborhood)).size,
+      neighborhoods: new Set(
+        cafes.map((cafe) => cafe.neighborhood).filter(Boolean),
+      ).size,
       reviews: cafes.reduce((total, cafe) => total + cafe.reviewCount, 0),
     }),
     [cafes],
   );
 
-  const locationNotice =
-    geo.status === 'requesting'
-      ? 'Buscando tu ubicación…'
-      : locationActive
-        ? `Mostrando las cafeterías a menos de ${RADIUS_KM} km, ordenadas por cercanía.`
-        : geo.message;
+  // Indica de dónde salen los datos que se muestran en el listado.
+  const sourceNote = locationActive
+    ? 'Cafés reales de OpenStreetMap cerca de tu ubicación'
+    : 'Cafés reales de OpenStreetMap en Madrid (referencia)';
+
+  const locationNotice = isLocating
+    ? 'Pidiendo permiso para acceder a tu ubicación…'
+    : locationActive
+      ? isLoading
+        ? 'Buscando cafeterías reales cerca de ti… puede tardar unos segundos.'
+        : isError
+          ? 'No se pudieron cargar las cafeterías cercanas.'
+          : `Mostrando las cafeterías a menos de ${RADIUS_KM} km, ordenadas por cercanía.`
+      : geo.status === 'denied' ||
+          geo.status === 'unavailable' ||
+          geo.status === 'error'
+        ? `${geo.message} Mientras tanto, mostramos cafeterías de Madrid como referencia.`
+        : 'Mostrando cafeterías de Madrid como referencia. Pulsa «Usar mi ubicación» para ver las de tu zona.';
 
   const locationCausedEmpty =
     locationActive &&
@@ -226,9 +270,9 @@ function App() {
             <CafeList
               cafes={filteredCafes}
               selectedId={effectiveSelectedId}
-              favorites={favorites}
+              favorites={favoriteIds}
               distances={distances}
-              isLoading={isLoading}
+              isLoading={isLoading || isLocating}
               isError={isError}
               emptyTitle={
                 showFavorites
@@ -250,6 +294,7 @@ function App() {
               onToggleFavorite={toggleFavorite}
               onRetry={() => void refetch()}
               onClearFilters={resetFilters}
+              sourceNote={sourceNote}
             />
           </div>
 
@@ -268,6 +313,7 @@ function App() {
                 cafes={filteredCafes}
                 selectedId={selectedId}
                 userLocation={userCoordinates}
+                isLoading={isLocating || isLoading}
                 emptyMessage={
                   locationCausedEmpty
                     ? 'No hay cafeterías cerca de tu ubicación.'
@@ -293,8 +339,8 @@ function App() {
               onRetry={() => void refetchDetail()}
               isFavorite={effectiveSelectedId ? isFavorite(effectiveSelectedId) : false}
               onToggleFavorite={() => {
-                if (effectiveSelectedId) {
-                  toggleFavorite(effectiveSelectedId);
+                if (selectedCafe) {
+                  toggleFavorite(selectedCafe);
                 }
               }}
             />

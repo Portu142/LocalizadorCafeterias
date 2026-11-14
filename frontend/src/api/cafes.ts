@@ -1,6 +1,8 @@
 import { API_URL } from '../config';
 import { mockCafes } from '../data/mockCafes';
 import type { Coordinates } from '../lib/geo';
+import { queryPhotonCafes } from './photon';
+import { queryCafeById, queryOverpassNearby } from './overpass';
 import type {
   CafeDetail,
   CafeSummary,
@@ -98,12 +100,40 @@ export async function fetchCafes(location?: Coordinates | null): Promise<CafeSum
     return request<CafeSummary[]>(`/api/cafes${query ? `?${query}` : ''}`);
   }
 
+  // Modo demo sin backend: con ubicación activa se piden cafés reales de
+  // OpenStreetMap. Photon responde en milisegundos y, si no encuentra nada,
+  // se completa con Overpass (que busca por etiqueta y no por nombre).
+  if (location) {
+    let cafes: CafeDetail[] = [];
+
+    try {
+      cafes = await queryPhotonCafes(location);
+    } catch {
+      // Photon no respondió: se intenta directamente con Overpass.
+    }
+
+    if (cafes.length === 0) {
+      cafes = await queryOverpassNearby(location);
+    }
+
+    return cafes.map(withStoredReviews).map(toSummary);
+  }
+
   return mockCafes.map(withStoredReviews).map(toSummary);
 }
 
 export async function fetchCafe(id: string): Promise<CafeDetail> {
   if (API_URL) {
     return request<CafeDetail>(`/api/cafes/${id}`);
+  }
+
+  if (id.startsWith('osm-')) {
+    const osmCafe = await queryCafeById(id);
+    if (!osmCafe) {
+      throw new Error('No se encontró la cafetería.');
+    }
+
+    return withStoredReviews(osmCafe);
   }
 
   const cafe = mockCafes.find((item) => item.id === id);

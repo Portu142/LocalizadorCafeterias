@@ -1,14 +1,15 @@
 # ☕ Localizador de Cafés
 
-Buscador de cafeterías de especialidad en Madrid. Proyecto **full-stack** pensado como pieza de portafolio: geolocalización para ordenar por cercanía, mapa interactivo, filtros por barrio, fichas con menú y horarios, favoritos y reseñas.
-
-**Demo:** _pendiente de publicar en GitHub Pages_ · **API:** ASP.NET Core 8 + PostgreSQL/PostGIS
+Buscador de cafeterías de especialidad cerca de ti. Proyecto **full-stack** pensado como pieza de portafolio: geolocalización automática para ordenar por cercanía, mapa interactivo, filtros por barrio, fichas con menú y horarios, favoritos y reseñas.
+**Demo:** _pendiente de publicar en GitHub Pages_ · **API:** ASP.NET Core 8 + PostgreSQL/PostGIS (en desarrollo local)
 
 ![Vista de escritorio del Localizador de Cafés](docs/screenshots/desktop.png)
 
-### Cerca de mí
+## Cerca de mí
 
-Al activar «Usar mi ubicación», la app pide permiso al navegador (solo bajo petición del usuario), filtra por un radio de 5 km, ordena los resultados de menor a mayor distancia y marca tu posición en el mapa. Si el permiso se deniega, muestra un mensaje claro y permite reintentar.
+Al cargar la página se solicita permiso de ubicación automáticamente. Si lo concedes, la app busca cafeterías reales de OpenStreetMap en un radio de 5 km, las ordena de menor a mayor distancia y marca tu posición en el mapa. Si lo deniegas (o no está disponible), muestra un mensaje claro, permite reintentar con el botón «Usar mi ubicación» y, mientras tanto, enseña cafeterías de Madrid como referencia.
+
+Los **favoritos no dependen de la ubicación**: se guarda la ficha del café en `localStorage`, así que siguen apareciendo aunque te muevas a otra ciudad o cambies de zona.
 
 ![Localizador de Cafés con la ubicación activa](docs/screenshots/location.png)
 
@@ -21,13 +22,13 @@ El objetivo era construir algo más que una landing: una aplicación real con se
 - **Frontend** React 19 + TypeScript + Vite + Tailwind CSS, con React Query para el estado del servidor.
 - **Backend** ASP.NET Core 8 con arquitectura por capas (`Domain`, `Application`, `Infrastructure`, `Api`).
 - **Base de datos** PostgreSQL 16 + PostGIS, con columna `geography(Point)` e índice GIST para búsquedas por cercanía.
-- **Demo estática** en GitHub Pages: si `VITE_API_URL` está vacío, el frontend usa datos mock y guarda reseñas/favoritos en `localStorage`.
+- **Demo estática** en GitHub Pages: si `VITE_API_URL` está vacío, el frontend consulta cafeterías reales de OpenStreetMap (Photon y Overpass) y guarda reseñas/favoritos en `localStorage`; si las APIs públicas fallan, usa los datos de ejemplo de Madrid.
 
 ### Funcionalidades
 
-- **Cerca de mí**: geolocalización del dispositivo con haversine, radio de 5 km y orden por distancia; estados de permiso concedido, denegado, no disponible y timeout.
+- **Cerca de mí**: geolocalización del dispositivo con haversine, radio de 5 km y orden por distancia; estados de permiso concedido, denegado, no disponible y timeout. La ubicación se pide automáticamente al cargar.
 - Búsqueda por nombre, dirección o barrio, insensible a mayúsculas y acentos.
-- Filtro por barrio y vista de favoritos persistentes.
+- Filtro por barrio y vista de favoritos persistentes e independientes de la ubicación.
 - Mapa Leaflet/OpenStreetMap con marcadores sincronizados con el listado, punto azul con tu posición y encuadre automático de los resultados.
 - Ficha de cafetería: distancia a tu posición, horario, teléfono, enlace a Google Maps, menú y reseñas.
 - Formulario de reseñas con validación en cliente y servidor, contador de caracteres y estados de éxito/error.
@@ -38,9 +39,9 @@ El objetivo era construir algo más que una landing: una aplicación real con se
 
 ### Vista móvil
 
-<img src="docs/screenshots/mobile.png" alt="Vista móvil del Localizador de Cafés" width="320" />
+![Vista móvil del Localizador de Cafés](docs/screenshots/mobile.png)
 
-## Stack
+### Stack
 
 | Capa | Tecnología |
 | --- | --- |
@@ -52,7 +53,7 @@ El objetivo era construir algo más que una landing: una aplicación real con se
 | Pruebas | xUnit + FluentValidation.TestHelper |
 | Infra | Docker Compose, nginx, GitHub Actions, GitHub Pages |
 
-## Arquitectura
+### Arquitectura
 
 ```text
 ┌──────────────────────────┐        ┌──────────────────────────┐
@@ -60,12 +61,12 @@ El objetivo era construir algo más que una landing: una aplicación real con se
 │  React Query · Leaflet   │ ─────► │  Controllers · Services  │
 │  Tailwind · localStorage │        │  FluentValidation        │
 └──────────────────────────┘        └────────────┬─────────────┘
-                                                 │ EF Core
-                                                 ▼
-                                    ┌──────────────────────────┐
-                                    │  PostgreSQL + PostGIS    │
-                                    │  geography(Point) · GIST │
-                                    └──────────────────────────┘
+                                                  │ EF Core
+                                                  ▼
+                                             ┌──────────────────────────┐
+                                             │  PostgreSQL + PostGIS    │
+                                             │  geography(Point) · GIST │
+                                             └──────────────────────────┘
 ```
 
 El backend sigue una arquitectura limpia en cuatro proyectos:
@@ -75,46 +76,9 @@ El backend sigue una arquitectura limpia en cuatro proyectos:
 - `Infrastructure`: `AppDbContext`, configuraciones EF Core, migraciones, repositorio y seed.
 - `Api`: controladores, middleware de errores y cabeceras de seguridad, rate limiting, Swagger, health checks.
 
-## Estructura del repositorio
+### Puesta en marcha
 
-```text
-Localizador_cafes/
-├── backend/
-│   ├── src/
-│   │   ├── LocalizadorCafes.Domain/
-│   │   ├── LocalizadorCafes.Application/
-│   │   ├── LocalizadorCafes.Infrastructure/
-│   │   └── LocalizadorCafes.Api/
-│   ├── tests/LocalizadorCafes.UnitTests/
-│   ├── Dockerfile
-│   └── LocalizadorCafes.sln
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── api/
-│   │   ├── lib/
-│   │   ├── data/mockCafes.ts
-│   │   └── types/
-│   ├── public/
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── vite.config.ts
-├── docs/screenshots/
-├── .github/workflows/
-├── docker-compose.yml
-└── README.md
-```
-
-## Puesta en marcha
-
-### Requisitos
-
-- Node.js 22+
-- .NET SDK 8
-- PostgreSQL 16 con la extensión PostGIS (o Docker)
-
-### 1. Frontend en modo demo (sin backend)
+#### 1. Frontend en modo demo (sin backend)
 
 ```bash
 cd frontend
@@ -122,7 +86,7 @@ npm ci
 npm run dev
 ```
 
-Abre `http://localhost:5173`. Sin `VITE_API_URL`, la app usa los datos de `src/data/mockCafes.ts`; las reseñas y los favoritos se guardan en `localStorage`.
+Abre `http://localhost:5173`. Sin `VITE_API_URL`, la app consulta cafeterías reales de OpenStreetMap cerca de tu ubicación (con datos de ejemplo de Madrid como respaldo); las reseñas y los favoritos se guardan en `localStorage`.
 
 Para probar el build de producción:
 
@@ -131,7 +95,7 @@ npm run build
 npm run preview
 ```
 
-### 2. Backend + PostgreSQL local
+#### 2. Backend + PostgreSQL local
 
 Crea la base de datos y habilita PostGIS:
 
@@ -167,7 +131,7 @@ VITE_API_URL=http://localhost:5067
 npm run dev
 ```
 
-### 3. Docker Compose (todo en uno)
+#### 3. Docker Compose (todo en uno)
 
 ```bash
 cp .env.example .env
@@ -180,17 +144,16 @@ docker compose up --build
 
 El servicio `db` espera a estar sano antes de arrancar la API; `Database__AutoMigrate=true` crea el esquema y carga los datos de ejemplo.
 
-## Variables de entorno
+### Variables de entorno
 
-### Frontend (`frontend/.env.example`)
+#### Frontend (`frontend/.env.example`)
 
 | Variable | Por defecto | Descripción |
 | --- | --- | --- |
-| `VITE_API_URL` | vacío | URL de la API. Vacío = modo demo con datos mock. |
+| `VITE_API_URL` | vacío | URL de la API. Vacío = modo demo con datos reales de OpenStreetMap. |
 | `VITE_SITE_URL` | `https://example.github.io/localizador-cafes/` | URL pública para canonical, Open Graph y sitemap. |
-| `VITE_GITHUB_URL` | `https://github.com` | Enlace al repositorio en cabecera y pie. |
 
-### Backend
+#### Backend
 
 | Variable | Por defecto | Descripción |
 | --- | --- | --- |
@@ -199,7 +162,7 @@ El servicio `db` espera a estar sano antes de arrancar la API; `Database__AutoMi
 | `Cors__AllowedOrigins__0..n` | `localhost:5173`, `localhost:4173` | Orígenes permitidos. |
 | `ReverseProxy__TrustForwardedHeaders` | `false` | Activar detrás de un proxy de confianza. |
 
-## API
+### API
 
 | Método | Ruta | Descripción |
 | --- | --- | --- |
@@ -213,7 +176,6 @@ Ejemplos:
 ```bash
 curl "http://localhost:5067/api/cafes?search=malasa%C3%B1a"
 curl "http://localhost:5067/api/cafes?lat=40.4168&lng=-3.7038&radiusKm=3"
-
 curl -X POST "http://localhost:5067/api/cafes/11111111-1111-1111-1111-111111111111/reviews" \
   -H "Content-Type: application/json" \
   -d '{"author":"Ana","rating":5,"comment":"Un café excelente y un ambiente muy tranquilo."}'
@@ -225,9 +187,9 @@ La validación devuelve `400` con `ValidationProblemDetails`; los parámetros ge
 
 El seed incluye **6 cafeterías** en 4 barrios de Madrid (Huertas, Malasaña, Palacio, Conde Duque), con menús, horarios y **12 reseñas** iniciales. Los identificadores son deterministas para que los enlaces de ejemplo sean reproducibles.
 
-## Calidad y pruebas
+### Calidad y pruebas
 
-### Backend
+#### Backend
 
 ```bash
 cd backend
@@ -238,7 +200,7 @@ dotnet test
 - `dotnet build` sin advertencias ni errores.
 - Migración EF Core con PostGIS incluida en el repositorio.
 
-### Frontend
+#### Frontend
 
 ```bash
 cd frontend
@@ -265,30 +227,32 @@ Comprobaciones manuales realizadas:
 - Contraste de texto corregido (AA) y atributos ARIA válidos.
 - Estados de carga, error, vacío y reintento probados.
 - Búsqueda con acentos (`malasaña` → `Malasaña`), filtros combinados, favoritos y publicación de reseñas.
-- Flujo de geolocalización completo: concesión (orden por distancia + punto en el mapa), denegación (mensaje y reintento), apagado (vista original) y selección de ficha (zoom a la cafetería).
+- Flujo de geolocalización completo: petición automática al cargar, concesión (orden por distancia + punto en el mapa), denegación (mensaje, cafeterías de referencia y reintento), apagado (vista original) y selección de ficha (zoom a la cafetería).
+- Favoritos independientes de la ubicación: se conservan al cambiar de zona o de ciudad.
 - Cabeceras de seguridad en API (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, CSP) y CSP en el HTML estático.
 - Rate limiting en reseñas y validación de parámetros de búsqueda.
 
-## Despliegue en GitHub Pages
+### Despliegue en GitHub Pages
 
 El workflow `.github/workflows/deploy-pages.yml` compila el frontend y publica `frontend/dist` en Pages en cada push a `main`.
 
 1. Sube el repositorio a GitHub.
 2. En **Settings → Pages**, selecciona **GitHub Actions** como origen.
-3. El workflow calcula `VITE_SITE_URL` a partir del nombre del repositorio y `VITE_GITHUB_URL` a partir del remoto.
+3. El workflow calcula `VITE_SITE_URL` a partir del nombre del repositorio.
 4. Opcional: define el variable `SITE_URL` en **Settings → Secrets and variables → Actions** si usas un dominio propio.
 
 Con `base: './'` los assets funcionan tanto en la raíz como en una subruta de proyecto (`usuario.github.io/repo/`).
 
 El workflow `.github/workflows/backend.yml` compila y ejecuta las pruebas del backend en cada push o pull request que afecte a `backend/`.
 
-## Limitaciones conocidas
+### Limitaciones conocidas
 
-- La demo de GitHub Pages funciona en **modo mock**: no hay backend público, por lo que las reseñas se guardan solo en el navegador.
+- La demo de GitHub Pages funciona en **modo demo**: no hay backend público, por lo que las reseñas se guardan solo en el navegador. Los cafés provienen de APIs públicas de OpenStreetMap (Photon/Overpass), sujetas a disponibilidad.
 - El backend no se ha ejecutado contra una instancia real de PostgreSQL en el entorno de desarrollo local (no había Docker/PostgreSQL instalados); sí compila, pasa las pruebas y la migración está generada. El `docker-compose.yml` permite validarlo de extremo a extremo.
 - El mapa depende de OpenStreetMap; sin conexión, los tiles no cargan (el resto de la interfaz sigue funcionando).
-- `VITE_SITE_URL` y `VITE_GITHUB_URL` deben sustituirse por las URLs reales antes de publicar.
+- `VITE_SITE_URL` debe sustituirse por la URL real antes de publicar.
+- La geolocalización requiere HTTPS (o `localhost`) y el permiso del usuario; si se deniega, la app funciona con la ubicación de referencia.
 
-## Licencia
+### Licencia
 
 Proyecto de portafolio. Los datos de cafeterías son ficticios y se usan solo como demostración.

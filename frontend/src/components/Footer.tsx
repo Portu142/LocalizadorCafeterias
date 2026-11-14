@@ -16,7 +16,7 @@ export function Footer() {
               Localizador de Cafés
             </p>
             <p className="text-[11px] text-coffee-500">
-              Cafeterías de especialidad en Madrid
+              Encuentra tu café más cercano
             </p>
           </div>
         </div>

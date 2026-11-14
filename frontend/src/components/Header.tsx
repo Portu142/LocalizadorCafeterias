@@ -1,6 +1,4 @@
 import { Coffee } from 'lucide-react';
-import { GITHUB_URL } from '../config';
-import { GithubIcon } from './GithubIcon';
 
 export function Header() {
   return (
@@ -15,7 +13,7 @@ export function Header() {
               Localizador de Cafés
             </span>
             <span className="hidden text-[11px] font-medium uppercase tracking-[0.18em] text-coffee-600 sm:block">
-              Café de especialidad · Madrid
+              Cafeterías cerca de ti
             </span>
           </span>
         </a>
@@ -27,25 +25,13 @@ export function Header() {
           >
             Explorar
           </a>
-          <a
-            className="inline-flex items-center gap-2 rounded-full border border-coffee-200 bg-white/70 px-3 py-1.5 text-xs font-semibold text-coffee-800 transition hover:border-coffee-300 hover:bg-white"
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <GithubIcon className="h-4 w-4" />
-            GitHub
-          </a>
         </nav>
 
         <a
-          className="inline-flex items-center justify-center rounded-full border border-coffee-200 bg-white/70 p-2 text-coffee-800 transition hover:border-coffee-300 hover:bg-white md:hidden"
-          href={GITHUB_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Ver el código en GitHub"
+          className="inline-flex items-center rounded-full border border-coffee-200 bg-white/70 px-3 py-1.5 text-xs font-semibold text-coffee-800 transition hover:border-coffee-300 hover:bg-white md:hidden"
+          href="#explorar"
         >
-          <GithubIcon className="h-4 w-4" />
+          Explorar
         </a>
       </div>
     </header>

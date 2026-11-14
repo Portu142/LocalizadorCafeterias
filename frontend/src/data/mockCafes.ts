@@ -42,8 +42,8 @@ export const mockCafes: CafeDetail[] = [
     neighborhood: 'Malasaña',
     phone: '+34 910 00 11 22',
     hours: 'Lun-Vie 08:30-19:00 · Sáb 09:00-20:00 · Dom 10:00-18:00',
-    latitude: 40.4255,
-    longitude: -3.7045,
+    latitude: 40.4257,
+    longitude: -3.7087,
     rating: 5,
     reviewCount: 2,
     menu: [
@@ -76,8 +76,8 @@ export const mockCafes: CafeDetail[] = [
     neighborhood: 'Malasaña',
     phone: '+34 915 22 33 44',
     hours: 'Lun-Dom 09:00-21:00',
-    latitude: 40.426,
-    longitude: -3.705,
+    latitude: 40.424,
+    longitude: -3.7036,
     rating: 4.5,
     reviewCount: 2,
     menu: [
@@ -144,8 +144,8 @@ export const mockCafes: CafeDetail[] = [
     neighborhood: 'Conde Duque',
     phone: '+34 915 43 21 10',
     hours: 'Lun-Vie 08:00-20:00 · Sáb-Dom 09:00-21:00',
-    latitude: 40.4265,
-    longitude: -3.7075,
+    latitude: 40.428,
+    longitude: -3.7125,
     rating: 4.5,
     reviewCount: 2,
     menu: [
@@ -178,8 +178,8 @@ export const mockCafes: CafeDetail[] = [
     neighborhood: 'Malasaña',
     phone: '+34 915 21 00 33',
     hours: 'Lun-Dom 09:00-22:00',
-    latitude: 40.4235,
-    longitude: -3.703,
+    latitude: 40.4215,
+    longitude: -3.7005,
     rating: 4,
     reviewCount: 2,
     menu: [
