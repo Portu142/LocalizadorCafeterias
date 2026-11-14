@@ -7,6 +7,7 @@ import { Hero } from './components/Hero';
 import { LocationFilter } from './components/LocationFilter';
 import { LocationBanner } from './components/LocationBanner';
 import { NeighborhoodFilter } from './components/NeighborhoodFilter';
+import { IS_DEMO_MODE } from './config';
 import { useCafe } from './hooks/useCafe';
 import { useCafes } from './hooks/useCafes';
 import { useFavorites } from './hooks/useFavorites';
@@ -159,9 +160,11 @@ function App() {
   );
 
   // Indica de dónde salen los datos que se muestran en el listado.
-  const sourceNote = locationActive
-    ? 'Cafés reales de OpenStreetMap cerca de tu ubicación'
-    : 'Cafés reales de OpenStreetMap en Madrid (referencia)';
+  const sourceNote = !IS_DEMO_MODE
+    ? 'Datos servidos por la API (.NET + PostgreSQL)'
+    : locationActive
+      ? 'Cafés reales de OpenStreetMap cerca de tu ubicación'
+      : 'Cafés reales de OpenStreetMap en Madrid (referencia)';
 
   const locationNotice = isLocating
     ? 'Pidiendo permiso para acceder a tu ubicación…'

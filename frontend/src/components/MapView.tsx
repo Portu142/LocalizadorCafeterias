@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet.markercluster';
+import { LocateFixed } from 'lucide-react';
 import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
 import type { Coordinates } from '../lib/geo';
 import type { CafeSummary } from '../types/cafe';
@@ -52,6 +53,9 @@ function MapA11y() {
   return null;
 }
 
+/** Zoom al que se centra la ubicación del usuario: calle, no ciudad. */
+const USER_ZOOM = 15;
+
 function MapController({
   selectedId,
   userLocation,
@@ -63,16 +67,53 @@ function MapController({
 }) {
   const map = useMap();
   const lastFitKey = useRef<string | null>(null);
+  const lastLocationKey = useRef<string | null>(null);
   const lastFlownId = useRef<string | null>(null);
 
   useEffect(() => {
+    // El mapa puede montarse con tamaño 0 (layout diferido, pestañas): sin
+    // esto, los encuadres y el centrado se calculan sobre un contenedor vacío.
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    map.invalidateSize();
+
+    return () => observer.disconnect();
+  }, [map]);
+
+  // Con ubicación real, el mapa se centra en el usuario en cuanto llega. Es
+  // intencionadamente un centrado (no un encuadre con las cafeterías) para que
+  // su punto quede en el centro y el movimiento sea inequívoco.
+  useEffect(() => {
+    if (!userLocation) {
+      lastLocationKey.current = null;
+      return;
+    }
+
+    const locationKey = `${userLocation.latitude},${userLocation.longitude}`;
+    if (lastLocationKey.current === locationKey) {
+      return;
+    }
+    lastLocationKey.current = locationKey;
+
+    map.stop();
+    map.flyTo(
+      [userLocation.latitude, userLocation.longitude],
+      USER_ZOOM,
+      { duration: 1.2 },
+    );
+  }, [map, userLocation]);
+
+  // Sin ubicación del usuario se encuadran las cafeterías de referencia.
+  useEffect(() => {
+    if (userLocation) {
+      return;
+    }
+
     // El encuadre se limita a los más cercanos: con muchas cafeterías en la
     // zona el zoom bajaba tanto que los marcadores se solapaban.
     const fitCafes = cafes.slice(0, FIT_LIMIT);
-    const locationKey = userLocation
-      ? `${userLocation.latitude},${userLocation.longitude}`
-      : '';
-    const fitKey = `${locationKey}|${fitCafes.map((cafe) => cafe.id).join(',')}`;
+    const fitKey = fitCafes.map((cafe) => cafe.id).join(',');
 
     if (lastFitKey.current === fitKey) {
       return;
@@ -80,24 +121,14 @@ function MapController({
     lastFitKey.current = fitKey;
 
     if (fitCafes.length === 0) {
-      // Sin resultados: encuadra la posición del usuario para que su punto
-      // se vea aunque esté lejos de Madrid (datos de ejemplo).
-      if (userLocation) {
-        map.stop();
-        map.setView([userLocation.latitude, userLocation.longitude], 14, {
-          animate: true,
-        });
-      }
+      map.stop();
+      map.setView(MADRID_CENTER, 13);
       return;
     }
 
-    const points: [number, number][] = fitCafes.map(
+    const points = fitCafes.map(
       (cafe) => [cafe.latitude, cafe.longitude] as [number, number],
     );
-
-    if (userLocation) {
-      points.unshift([userLocation.latitude, userLocation.longitude]);
-    }
 
     // Corta cualquier animación en curso (p. ej. un flyTo reciente) para que
     // el encuadre se aplique siempre de forma limpia.
@@ -217,6 +248,21 @@ export function MapView({
   isLoading = false,
   onSelect,
 }: MapViewProps) {
+  const mapRef = useRef<L.Map | null>(null);
+
+  const recenter = () => {
+    if (!userLocation || !mapRef.current) {
+      return;
+    }
+
+    mapRef.current.stop();
+    mapRef.current.flyTo(
+      [userLocation.latitude, userLocation.longitude],
+      USER_ZOOM,
+      { duration: 1 },
+    );
+  };
+
   return (
     <section
       className="relative h-full min-h-[320px] overflow-hidden rounded-3xl border border-coffee-100 shadow-soft"
@@ -224,6 +270,7 @@ export function MapView({
       aria-label="Mapa de cafeterías"
     >
       <MapContainer
+        ref={mapRef}
         center={MADRID_CENTER}
         zoom={13}
         scrollWheelZoom
@@ -247,6 +294,18 @@ export function MapView({
 
         <CafeClusterLayer cafes={cafes} onSelect={onSelect} />
       </MapContainer>
+
+      {userLocation && (
+        <button
+          type="button"
+          onClick={recenter}
+          className="absolute right-3 top-3 z-[1000] inline-flex items-center gap-1.5 rounded-full border border-coffee-100 bg-white/95 px-3 py-2 text-xs font-semibold text-coffee-800 shadow-soft backdrop-blur transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-caramel-500"
+          title="Centrar el mapa en mi ubicación"
+        >
+          <LocateFixed className="h-3.5 w-3.5" aria-hidden="true" />
+          Centrar en mí
+        </button>
+      )}
 
       {cafes.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-cream-50/80 backdrop-blur-sm">

@@ -5,24 +5,48 @@ import { defineConfig, loadEnv } from 'vite';
 
 const DEFAULT_SITE_URL = 'https://example.github.io/localizador-cafes/';
 
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-  "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://tile.openstreetmap.org",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https:",
-  "manifest-src 'self'",
-].join('; ');
+function contentSecurityPolicy(apiOrigin: string | null) {
+  // La API local va por HTTP: si se configura VITE_API_URL hay que permitir su
+  // origen en connect-src o el navegador bloquea todas las peticiones.
+  const connectSrc = ["'self'", 'https:'];
+  if (apiOrigin) {
+    connectSrc.push(apiOrigin);
+  }
+
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+    "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://tile.openstreetmap.org",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    `connect-src ${connectSrc.join(' ')}`,
+    "manifest-src 'self'",
+  ].join('; ');
+}
+
+function apiOriginOf(value: string | undefined): string | null {
+  if (!value?.trim()) {
+    return null;
+  }
+
+  try {
+    return new URL(value.trim()).origin;
+  } catch {
+    return null;
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const siteUrl = `${(env.VITE_SITE_URL?.trim() || DEFAULT_SITE_URL).replace(/\/+$/, '')}/`;
   const ogImageUrl = new URL('og-image.png', siteUrl).href;
+  const contentSecurityPolicyHeader = contentSecurityPolicy(
+    apiOriginOf(env.VITE_API_URL),
+  );
 
   return {
     base: './',
@@ -43,7 +67,7 @@ export default defineConfig(({ mode }) => {
         transformIndexHtml(html) {
           return html.replace(
             '</head>',
-            `    <meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}" />\n  </head>`,
+            `    <meta http-equiv="Content-Security-Policy" content="${contentSecurityPolicyHeader}" />\n  </head>`,
           );
         },
       },

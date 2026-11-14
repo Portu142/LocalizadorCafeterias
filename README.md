@@ -7,7 +7,7 @@ Buscador de cafeterías de especialidad cerca de ti. Proyecto **full-stack** pen
 
 ## Cerca de mí
 
-Al cargar la página se solicita permiso de ubicación automáticamente. Si lo concedes, la app busca cafeterías reales de OpenStreetMap en un radio de 5 km, las ordena de menor a mayor distancia y marca tu posición en el mapa. Si lo deniegas (o el navegador bloquea la petición automática), aparece un aviso con el botón «Permitir ubicación»: al concederlo, la app se recentra sola en tu zona sin recargar. Mientras tanto, enseña cafeterías de Madrid como referencia.
+Al cargar la página se solicita permiso de ubicación automáticamente. Si lo concedes, la app busca cafeterías reales de OpenStreetMap en un radio de 5 km, las ordena de menor a mayor distancia y **centra el mapa en tu posición** (zoom de calle, con tu punto en el centro). Si te alejas arrastrando, el botón **«Centrar en mí»** te devuelve a tu ubicación. Si deniegas el permiso (o el navegador bloquea la petición automática), aparece un aviso con el botón «Permitir ubicación»: al concederlo, la app se recentra sola en tu zona sin recargar. Mientras tanto, enseña cafeterías de Madrid como referencia.
 
 Los **favoritos no dependen de la ubicación**: se guarda la ficha del café en `localStorage`, así que siguen apareciendo aunque te muevas a otra ciudad o cambies de zona.
 
@@ -110,7 +110,19 @@ Si no hay PostgreSQL disponible, la API **arranca en modo demo** con las 6 cafet
 
 ##### Con PostgreSQL + PostGIS
 
-Crea la base de datos y habilita PostGIS:
+La forma más rápida en Windows es usar la distro Ubuntu de WSL, que ya trae PostgreSQL 16 y PostGIS:
+
+```powershell
+# Instalación inicial (una sola vez)
+wsl -d Ubuntu-24.04 -u root -- bash -lc "apt-get install -y postgresql postgresql-contrib postgis postgresql-16-postgis-3"
+
+# Arrancar el clúster (mantiene la distro viva mientras el equipo esté encendido)
+pwsh -File scripts/start-db.ps1
+```
+
+Si usas una distro con otro nombre: `pwsh -File scripts/start-db.ps1 -Distro Ubuntu`.
+
+También puedes usar un PostgreSQL nativo o Docker; en cualquier caso crea la base de datos y habilita PostGIS:
 
 ```sql
 CREATE DATABASE localizador_cafes;
@@ -134,6 +146,8 @@ cd frontend
 VITE_API_URL=http://localhost:5067
 npm run dev
 ```
+
+> El build de producción genera la CSP con el origen de `VITE_API_URL` en `connect-src`, así que la API local (HTTP) no queda bloqueada por el navegador.
 
 #### 3. Docker Compose (todo en uno)
 
@@ -204,7 +218,7 @@ dotnet test
 - 18 pruebas unitarias: validador de reseñas (autor, longitudes, rating y comentario) y repositorio en memoria (búsqueda, radio, reseñas y datos de ejemplo).
 - `dotnet build` sin advertencias ni errores.
 - Migración EF Core con PostGIS incluida en el repositorio.
-- Arranque verificado sin PostgreSQL (modo demo) y con la API respondiendo a listado, detalle, filtro por radio y creación de reseñas.
+- Verificado contra PostgreSQL 16 + PostGIS 3.4 reales: migración y seed automáticos, listado, filtro por radio (`geography`), detalle y alta de reseñas con recálculo de la media. También verificado el arranque sin base de datos (modo demo en memoria).
 
 #### Frontend
 
@@ -254,7 +268,7 @@ El workflow `.github/workflows/backend.yml` compila y ejecuta las pruebas del ba
 ### Limitaciones conocidas
 
 - La demo de GitHub Pages funciona en **modo demo**: no hay backend público, por lo que las reseñas se guardan solo en el navegador. Los cafés provienen de APIs públicas de OpenStreetMap (Photon/Overpass), sujetas a disponibilidad.
-- El backend se ha validado con el repositorio en memoria (modo demo); contra PostgreSQL real requiere Docker/PostgreSQL locales, pero el `docker-compose.yml` y la migración están listos para probarlo de extremo a extremo.
+- El backend se ha validado de extremo a extremo contra **PostgreSQL 16 + PostGIS 3.4** reales (migraciones, seed, filtro por radio con `geography`, detalle y alta de reseñas). En Windows puede arrancarse con `scripts/start-db.ps1`; también hay `docker-compose.yml` para Docker.
 - El mapa depende de OpenStreetMap; sin conexión, los tiles no cargan (el resto de la interfaz sigue funcionando).
 - `VITE_SITE_URL` debe sustituirse por la URL real antes de publicar.
 - La geolocalización requiere HTTPS (o `localhost`) y el permiso del usuario. Algunos navegadores bloquean los avisos de permiso sin un gesto del usuario (Chrome aplica «quiet blocks»): en ese caso la app muestra el aviso con el botón «Permitir ubicación». Si el permiso está bloqueado de forma permanente, hay que abrirlo desde el candado de la barra de direcciones.
