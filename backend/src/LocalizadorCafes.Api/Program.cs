@@ -26,7 +26,7 @@ if (useInMemory)
     Console.WriteLine(
         "\n⚠  No se pudo conectar con PostgreSQL. La API arranca en MODO DEMO con datos en memoria.\n" +
         "   Las reseñas nuevas se pierden al reiniciar. Para usar PostgreSQL:\n" +
-        "     pwsh -File scripts/start-db.ps1   (PostgreSQL en WSL)\n" +
+        "     .\\scripts\\start-db.ps1   (PostgreSQL en WSL)\n" +
         "     docker compose up -d db           (Docker)\n" +
         "   o ajusta ConnectionStrings__DefaultConnection.\n");
 }

@@ -117,10 +117,10 @@ La forma más rápida en Windows es usar la distro Ubuntu de WSL, que ya trae Po
 wsl -d Ubuntu-24.04 -u root -- bash -lc "apt-get install -y postgresql postgresql-contrib postgis postgresql-16-postgis-3"
 
 # Arrancar el clúster (mantiene la distro viva mientras el equipo esté encendido)
-pwsh -File scripts/start-db.ps1
+.\scripts\start-db.ps1
 ```
 
-Si usas una distro con otro nombre: `pwsh -File scripts/start-db.ps1 -Distro Ubuntu`.
+Si usas una distro con otro nombre: `.\scripts\start-db.ps1 -Distro Ubuntu`. El script funciona tanto con Windows PowerShell 5.1 como con PowerShell 7; si la política de ejecución lo bloquea, usa `powershell -ExecutionPolicy Bypass -File .\scripts\start-db.ps1`.
 
 También puedes usar un PostgreSQL nativo o Docker; en cualquier caso crea la base de datos y habilita PostGIS:
 

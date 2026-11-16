@@ -14,10 +14,15 @@
     Versión del clúster de PostgreSQL. Por defecto, 16.
 
 .EXAMPLE
-    pwsh -File scripts/start-db.ps1
+    .\scripts\start-db.ps1
 
 .EXAMPLE
-    pwsh -File scripts/start-db.ps1 -Distro Ubuntu -Cluster 16
+    .\scripts\start-db.ps1 -Distro Ubuntu -Cluster 16
+
+.NOTES
+    Funciona con Windows PowerShell 5.1 (powershell.exe) y con PowerShell 7
+    (pwsh.exe). Si la política de ejecución bloquea el script:
+    powershell -ExecutionPolicy Bypass -File .\scripts\start-db.ps1
 #>
 param(
     [string]$Distro = "Ubuntu-24.04",
@@ -40,13 +45,33 @@ $keepAlive = Get-CimInstance Win32_Process -Filter "Name = 'wsl.exe'" |
     Where-Object { $_.CommandLine -like "*sleep infinity*" }
 
 if (-not $keepAlive) {
+    # `--exec` ejecuta el binario sin pasar por un shell: con `bash -lc` las
+    # comillas se perdían al lanzar el proceso y el keepalive moría al instante.
     Start-Process wsl.exe `
-        -ArgumentList "-d", $Distro, "-u", "root", "--", "bash", "-lc", "exec sleep infinity" `
+        -ArgumentList @("-d", $Distro, "-u", "root", "--exec", "sleep", "infinity") `
         -WindowStyle Hidden
-    Write-Host "Distro mantenida activa en segundo plano." -ForegroundColor DarkGray
+    Start-Sleep -Seconds 3
+
+    $keepAlive = Get-CimInstance Win32_Process -Filter "Name = 'wsl.exe'" |
+        Where-Object { $_.CommandLine -like "*sleep infinity*" }
+
+    if ($keepAlive) {
+        Write-Host "Distro mantenida activa en segundo plano." -ForegroundColor DarkGray
+    }
+    else {
+        Write-Warning "No se pudo mantener la distro en segundo plano. Deja abierta una terminal con: wsl -d $Distro"
+    }
 }
 
-$reachable = Test-NetConnection -ComputerName 127.0.0.1 -Port 5432 -InformationLevel Quiet
+# El clúster puede tardar unos segundos en aceptar conexiones.
+$reachable = $false
+for ($i = 0; $i -lt 15; $i++) {
+    if (Test-NetConnection -ComputerName 127.0.0.1 -Port 5432 -InformationLevel Quiet -WarningAction SilentlyContinue) {
+        $reachable = $true
+        break
+    }
+    Start-Sleep -Seconds 1
+}
 
 if ($reachable) {
     Write-Host "PostgreSQL disponible en localhost:5432." -ForegroundColor Green
