@@ -50,6 +50,12 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: './',
+    // Permite compartir el build de producción con un túnel de Cloudflare
+    // (`cloudflared tunnel --url http://localhost:4173`) sin que Vite bloquee
+    // el Host público con un 403.
+    preview: {
+      allowedHosts: ['.trycloudflare.com'],
+    },
     plugins: [
       react(),
       {
