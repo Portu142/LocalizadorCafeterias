@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchCafes } from '../api/cafes';
+import { fetchCafesWithSource } from '../api/cafes';
 import type { Coordinates } from '../lib/geo';
 
 type UseCafesOptions = {
@@ -13,7 +13,7 @@ export function useCafes(
 ) {
   return useQuery({
     queryKey: ['cafes', location?.latitude ?? null, location?.longitude ?? null],
-    queryFn: () => fetchCafes(location),
+    queryFn: () => fetchCafesWithSource(location),
     staleTime: 1000 * 60 * 5,
     // Con OpenStreetMap cada intento ya prueba varios endpoints; un único
     // reintento automático evita pantallas de carga de minutos.

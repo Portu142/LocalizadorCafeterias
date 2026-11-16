@@ -86,7 +86,32 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function fetchCafes(location?: Coordinates | null): Promise<CafeSummary[]> {
+export type CafeSource = 'api' | 'osm' | 'mock';
+
+export type CafeSearchResult = {
+  cafes: CafeSummary[];
+  source: CafeSource;
+};
+
+async function queryOpenStreetMap(location: Coordinates): Promise<CafeDetail[]> {
+  let cafes: CafeDetail[] = [];
+
+  try {
+    cafes = await queryPhotonCafes(location);
+  } catch {
+    // Photon no respondió: se intenta directamente con Overpass.
+  }
+
+  if (cafes.length === 0) {
+    cafes = await queryOverpassNearby(location);
+  }
+
+  return cafes;
+}
+
+export async function fetchCafesWithSource(
+  location?: Coordinates | null,
+): Promise<CafeSearchResult> {
   if (API_URL) {
     const params = new URLSearchParams();
 
@@ -97,33 +122,60 @@ export async function fetchCafes(location?: Coordinates | null): Promise<CafeSum
     }
 
     const query = params.toString();
-    return request<CafeSummary[]>(`/api/cafes${query ? `?${query}` : ''}`);
+    const cafes = await request<CafeSummary[]>(
+      `/api/cafes${query ? `?${query}` : ''}`,
+    );
+
+    // La base de datos de la API solo cubre Madrid: si no hay cafeterías cerca
+    // de la ubicación real, se completan con OpenStreetMap para que la app sea
+    // útil en cualquier ciudad.
+    if (cafes.length > 0 || !location) {
+      return { cafes, source: 'api' };
+    }
+
+    try {
+      const osmCafes = await queryOpenStreetMap(location);
+      if (osmCafes.length > 0) {
+        return {
+          cafes: osmCafes.map(withStoredReviews).map(toSummary),
+          source: 'osm',
+        };
+      }
+    } catch {
+      // OpenStreetMap tampoco respondió: se deja la lista vacía de la API.
+    }
+
+    return { cafes, source: 'api' };
   }
 
   // Modo demo sin backend: con ubicación activa se piden cafés reales de
   // OpenStreetMap. Photon responde en milisegundos y, si no encuentra nada,
   // se completa con Overpass (que busca por etiqueta y no por nombre).
   if (location) {
-    let cafes: CafeDetail[] = [];
-
-    try {
-      cafes = await queryPhotonCafes(location);
-    } catch {
-      // Photon no respondió: se intenta directamente con Overpass.
-    }
-
-    if (cafes.length === 0) {
-      cafes = await queryOverpassNearby(location);
-    }
-
-    return cafes.map(withStoredReviews).map(toSummary);
+    const cafes = await queryOpenStreetMap(location);
+    return {
+      cafes: cafes.map(withStoredReviews).map(toSummary),
+      source: 'osm',
+    };
   }
 
-  return mockCafes.map(withStoredReviews).map(toSummary);
+  return {
+    cafes: mockCafes.map(withStoredReviews).map(toSummary),
+    source: 'mock',
+  };
+}
+
+export async function fetchCafes(
+  location?: Coordinates | null,
+): Promise<CafeSummary[]> {
+  const { cafes } = await fetchCafesWithSource(location);
+  return cafes;
 }
 
 export async function fetchCafe(id: string): Promise<CafeDetail> {
-  if (API_URL) {
+  // Los cafés de OpenStreetMap (id `osm-…`) se consultan en OSM aunque haya
+  // API: no existen en la base de datos de PostgreSQL.
+  if (API_URL && !id.startsWith('osm-')) {
     return request<CafeDetail>(`/api/cafes/${id}`);
   }
 
@@ -148,7 +200,9 @@ export async function createReview(
   cafeId: string,
   requestBody: CreateReviewRequest,
 ): Promise<Review> {
-  if (API_URL) {
+  // Las reseñas de cafés de OpenStreetMap se guardan en el navegador: la API
+  // no los conoce y rechazaría el id.
+  if (API_URL && !cafeId.startsWith('osm-')) {
     return request<Review>(`/api/cafes/${cafeId}/reviews`, {
       method: 'POST',
       body: JSON.stringify(requestBody),

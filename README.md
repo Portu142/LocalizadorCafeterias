@@ -7,7 +7,7 @@ Buscador de cafeterías de especialidad cerca de ti. Proyecto **full-stack** pen
 
 ## Cerca de mí
 
-Al cargar la página se solicita permiso de ubicación automáticamente. Si lo concedes, la app busca cafeterías reales de OpenStreetMap en un radio de 5 km, las ordena de menor a mayor distancia y **centra el mapa en tu posición** (zoom de calle, con tu punto en el centro). Si te alejas arrastrando, el botón **«Centrar en mí»** te devuelve a tu ubicación. Si deniegas el permiso (o el navegador bloquea la petición automática), aparece un aviso con el botón «Permitir ubicación»: al concederlo, la app se recentra sola en tu zona sin recargar. Mientras tanto, enseña cafeterías de Madrid como referencia.
+Al cargar la página se solicita permiso de ubicación automáticamente. Si lo concedes, la app busca cafeterías en un radio de 5 km, las ordena de menor a mayor distancia y **centra el mapa en tu posición** (zoom de calle, con tu punto en el centro). Con la API activa se consultan primero las cafeterías de PostgreSQL; si no hay ninguna cerca (la base solo cubre Madrid), se muestran las de OpenStreetMap de tu zona. Si te alejas arrastrando, el botón **«Centrar en mí»** te devuelve a tu ubicación. Si deniegas el permiso (o el navegador bloquea la petición automática), aparece un aviso con el botón «Permitir ubicación»: al concederlo, la app se recentra sola en tu zona sin recargar. Mientras tanto, enseña cafeterías de Madrid como referencia.
 
 Los **favoritos no dependen de la ubicación**: se guarda la ficha del café en `localStorage`, así que siguen apareciendo aunque te muevas a otra ciudad o cambies de zona.
 
@@ -222,6 +222,13 @@ La validación devuelve `400` con `ValidationProblemDetails`; los parámetros ge
 
 El seed incluye **6 cafeterías** en 4 barrios de Madrid (Huertas, Malasaña, Palacio, Conde Duque), con menús, horarios y **12 reseñas** iniciales. Los mismos datos alimentan el modo demo en memoria.
 
+La base de datos solo cubre Madrid. Para que la app sea útil en cualquier ciudad, el frontend usa una **fuente híbrida**:
+
+- Consulta primero la API con tu ubicación (radio de 5 km).
+- Si la API devuelve resultados, se muestran tal cual (PostgreSQL/PostGIS).
+- Si devuelve **0 cafeterías** (estás fuera de Madrid), consulta OpenStreetMap (Photon y, como respaldo, Overpass) y muestra los cafés reales de tu zona. La nota sobre el listado lo indica: «Cafés reales de OpenStreetMap cerca de ti (la API solo cubre Madrid)».
+- Los cafés de OSM llevan ids `osm-…`: su detalle y sus reseñas se resuelven en el navegador y **nunca** se envían a la API. Las reseñas de OSM se guardan en `localStorage`.
+
 ### Calidad y pruebas
 
 #### Backend
@@ -284,6 +291,7 @@ El workflow `.github/workflows/backend.yml` compila y ejecuta las pruebas del ba
 ### Limitaciones conocidas
 
 - La demo de GitHub Pages funciona en **modo demo**: no hay backend público, por lo que las reseñas se guardan solo en el navegador. Los cafés provienen de APIs públicas de OpenStreetMap (Photon/Overpass), sujetas a disponibilidad.
+- El dataset de PostgreSQL es **solo de Madrid**: fuera de 5 km la API devuelve `[]` y el frontend cae a OpenStreetMap. Las reseñas de esos cafés de OSM se guardan en `localStorage` (clave `localizador_cafes_mock_reviews`), no en PostgreSQL.
 - El backend se ha validado de extremo a extremo contra **PostgreSQL 16 + PostGIS 3.4** reales (migraciones, seed, filtro por radio con `geography`, detalle y alta de reseñas). En Windows puede arrancarse con `scripts/start-db.ps1`; también hay `docker-compose.yml` para Docker.
 - El mapa depende de OpenStreetMap; sin conexión, los tiles no cargan (el resto de la interfaz sigue funcionando).
 - `VITE_SITE_URL` debe sustituirse por la URL real antes de publicar.

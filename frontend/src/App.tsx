@@ -40,10 +40,14 @@ function App() {
 
   // Mientras se resuelve el permiso no se consulta la ubicación de referencia:
   // evita un parpadeo de cafeterías de Madrid antes de las de tu zona.
-  const { data: cafes = [], isLoading, isError, refetch } = useCafes(
-    userCoordinates ?? DEFAULT_LOCATION,
-    { enabled: !isLocating },
-  );
+  const {
+    data: cafeSearch,
+    isLoading,
+    isError,
+    refetch,
+  } = useCafes(userCoordinates ?? DEFAULT_LOCATION, { enabled: !isLocating });
+  const cafes = useMemo(() => cafeSearch?.cafes ?? [], [cafeSearch]);
+  const dataSource = cafeSearch?.source ?? null;
   const { favorites, favoriteIds, toggleFavorite, isFavorite } = useFavorites();
 
   const [search, setSearch] = useState('');
@@ -159,12 +163,19 @@ function App() {
     [cafes],
   );
 
-  // Indica de dónde salen los datos que se muestran en el listado.
-  const sourceNote = !IS_DEMO_MODE
-    ? 'Datos servidos por la API (.NET + PostgreSQL)'
-    : locationActive
-      ? 'Cafés reales de OpenStreetMap cerca de tu ubicación'
-      : 'Cafés reales de OpenStreetMap en Madrid (referencia)';
+  // Indica de dónde salen los datos que se muestran en el listado. Con la API
+  // activa puede ser PostgreSQL (Madrid) o el fallback de OpenStreetMap cuando
+  // no hay cafeterías cerca de la ubicación real.
+  const sourceNote =
+    dataSource === 'osm'
+      ? IS_DEMO_MODE
+        ? locationActive
+          ? 'Cafés reales de OpenStreetMap cerca de tu ubicación'
+          : 'Cafés reales de OpenStreetMap en Madrid (referencia)'
+        : 'Cafés reales de OpenStreetMap cerca de ti (la API solo cubre Madrid)'
+      : dataSource === 'mock'
+        ? 'Datos de ejemplo de Madrid'
+        : 'Datos servidos por la API (.NET + PostgreSQL)';
 
   const locationNotice = isLocating
     ? 'Pidiendo permiso para acceder a tu ubicación…'
