@@ -78,6 +78,18 @@ El backend sigue una arquitectura limpia en cuatro proyectos:
 
 ### Puesta en marcha
 
+#### Todo de una vez (Windows)
+
+Desde la raíz del repositorio:
+
+```powershell
+.\scripts\dev.ps1
+```
+
+Arranca PostgreSQL (WSL), abre una ventana con la API y otra con el frontend, y abre `http://localhost:5173`. Opciones: `-SkipDatabase` (si la base ya está en marcha) y `-SkipBrowser`.
+
+Si la política de ejecución bloquea el script: `powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1`.
+
 #### 1. Frontend en modo demo (sin backend)
 
 ```bash
@@ -102,9 +114,13 @@ cd backend
 dotnet run --project src/LocalizadorCafes.Api
 ```
 
+Si no tienes el SDK de .NET en el `PATH`, usa el SDK local desde la raíz: `.\.dotnet\dotnet.exe run --project backend\src\LocalizadorCafes.Api`.
+
 - API: `http://localhost:5067`
 - Swagger (solo Development): `http://localhost:5067/swagger`
 - Health check: `http://localhost:5067/health`
+
+> Para recompilar con la API en marcha hay que pararla antes (`Ctrl+C`): Windows bloquea los `.dll` del proceso y la compilación falla con `MSB3027`. Si arrancas otra instancia, primero libera el puerto con `npx kill-port 5067`.
 
 Si no hay PostgreSQL disponible, la API **arranca en modo demo** con las 6 cafeterías de ejemplo en memoria: todos los endpoints funcionan y las reseñas nuevas se pierden al reiniciar. El aviso aparece en la consola al iniciar.
 
