@@ -52,6 +52,7 @@ public class CafeService
             CafeId = cafeId,
             Author = request.Author.Trim(),
             Rating = request.Rating,
+            MenuRating = request.MenuRating,
             Comment = request.Comment.Trim()
         };
 
@@ -112,6 +113,7 @@ public class CafeService
             review.Id,
             review.Author,
             review.Rating,
+            review.MenuRating,
             review.Comment,
             review.CreatedAt);
     }

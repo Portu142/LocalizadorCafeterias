@@ -213,6 +213,7 @@ export async function createReview(
     id: crypto.randomUUID(),
     author: requestBody.author.trim(),
     rating: requestBody.rating,
+    menuRating: requestBody.menuRating,
     comment: requestBody.comment.trim(),
     createdAt: new Date().toISOString(),
   };

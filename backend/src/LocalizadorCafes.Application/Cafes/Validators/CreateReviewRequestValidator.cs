@@ -15,6 +15,9 @@ public class CreateReviewRequestValidator : AbstractValidator<CreateReviewReques
         RuleFor(x => x.Rating)
             .InclusiveBetween(1, 5).WithMessage("La puntuación debe estar entre 1 y 5.");
 
+        RuleFor(x => x.MenuRating)
+            .InclusiveBetween(1, 5).WithMessage("La puntuación del menú debe estar entre 1 y 5.");
+
         RuleFor(x => x.Comment)
             .NotEmpty().WithMessage("El comentario es obligatorio.")
             .MinimumLength(10).WithMessage("El comentario debe tener al menos 10 caracteres.")

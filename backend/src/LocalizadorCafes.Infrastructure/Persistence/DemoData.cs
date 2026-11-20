@@ -26,8 +26,8 @@ public static class DemoData
                 ("Croissant", 2.20m),
                 ("Tarta de queso", 4.50m)
             });
-        central.Reviews.Add(CreateReview("Laura", 5, "Ambiente increíble y café excelente.", 2026, 10, 12));
-        central.Reviews.Add(CreateReview("Carlos", 4, "Buen lugar para trabajar, aunque se llena.", 2026, 9, 28));
+        central.Reviews.Add(CreateReview("Laura", 5, 5, "Ambiente increíble y café excelente.", 2026, 10, 12));
+        central.Reviews.Add(CreateReview("Carlos", 4, 4, "Buen lugar para trabajar, aunque se llena.", 2026, 9, 28));
 
         var toma = CreateCafe(
             "Toma Café",
@@ -44,8 +44,8 @@ public static class DemoData
                 ("Avocado toast", 6.50m),
                 ("Brownie", 3.50m)
             });
-        toma.Reviews.Add(CreateReview("Marta", 5, "El mejor flat white de Madrid.", 2026, 10, 2));
-        toma.Reviews.Add(CreateReview("Diego", 5, "Muy buen café y trato cercano.", 2026, 9, 15));
+        toma.Reviews.Add(CreateReview("Marta", 5, 5, "El mejor flat white de Madrid.", 2026, 10, 2));
+        toma.Reviews.Add(CreateReview("Diego", 5, 5, "Muy buen café y trato cercano.", 2026, 9, 15));
 
         var hanso = CreateCafe(
             "HanSo Café",
@@ -62,8 +62,8 @@ public static class DemoData
                 ("Carrot cake", 4.20m),
                 ("Brunch", 12.00m)
             });
-        hanso.Reviews.Add(CreateReview("Ana", 5, "Un sitio precioso y el matcha está delicioso.", 2026, 10, 8));
-        hanso.Reviews.Add(CreateReview("Pablo", 4, "Buen brunch, algo caro.", 2026, 9, 22));
+        hanso.Reviews.Add(CreateReview("Ana", 5, 5, "Un sitio precioso y el matcha está delicioso.", 2026, 10, 8));
+        hanso.Reviews.Add(CreateReview("Pablo", 4, 4, "Buen brunch, algo caro.", 2026, 9, 22));
 
         var oriente = CreateCafe(
             "Café de Oriente",
@@ -80,8 +80,8 @@ public static class DemoData
                 ("Bocadillo", 5.50m),
                 ("Tarta", 5.00m)
             });
-        oriente.Reviews.Add(CreateReview("Lucía", 4, "Vistas magníficas y café correcto.", 2026, 9, 30));
-        oriente.Reviews.Add(CreateReview("Javier", 5, "Perfecto para una tarde tranquila.", 2026, 9, 10));
+        oriente.Reviews.Add(CreateReview("Lucía", 4, 3, "Vistas magníficas y café correcto.", 2026, 9, 30));
+        oriente.Reviews.Add(CreateReview("Javier", 5, 4, "Perfecto para una tarde tranquila.", 2026, 9, 10));
 
         var federal = CreateCafe(
             "Federal Café",
@@ -98,8 +98,8 @@ public static class DemoData
                 ("Pancakes", 7.00m),
                 ("Zumo natural", 3.50m)
             });
-        federal.Reviews.Add(CreateReview("Sofía", 5, "El brunch es espectacular.", 2026, 10, 1));
-        federal.Reviews.Add(CreateReview("Andrés", 4, "Buen ambiente, ideal para el fin de semana.", 2026, 9, 18));
+        federal.Reviews.Add(CreateReview("Sofía", 5, 5, "El brunch es espectacular.", 2026, 10, 1));
+        federal.Reviews.Add(CreateReview("Andrés", 4, 4, "Buen ambiente, ideal para el fin de semana.", 2026, 9, 18));
 
         var bicicleta = CreateCafe(
             "La Bicicleta Café",
@@ -116,8 +116,8 @@ public static class DemoData
                 ("Tostada", 3.20m),
                 ("Brownie", 3.00m)
             });
-        bicicleta.Reviews.Add(CreateReview("Elena", 4, "Muy acogedor y con buena música.", 2026, 9, 25));
-        bicicleta.Reviews.Add(CreateReview("Raúl", 4, "Buen sitio para merendar.", 2026, 9, 5));
+        bicicleta.Reviews.Add(CreateReview("Elena", 4, 4, "Muy acogedor y con buena música.", 2026, 9, 25));
+        bicicleta.Reviews.Add(CreateReview("Raúl", 4, 3, "Buen sitio para merendar.", 2026, 9, 5));
 
         return new List<Cafe> { central, toma, hanso, oriente, federal, bicicleta };
     }
@@ -157,6 +157,7 @@ public static class DemoData
     private static Review CreateReview(
         string author,
         int rating,
+        int menuRating,
         string comment,
         int year,
         int month,
@@ -166,6 +167,7 @@ public static class DemoData
         {
             Author = author,
             Rating = rating,
+            MenuRating = menuRating,
             Comment = comment,
             CreatedAt = new DateTimeOffset(year, month, day, 0, 0, 0, TimeSpan.Zero)
         };

@@ -32,6 +32,7 @@ El objetivo era construir algo más que una landing: una aplicación real con se
 - Mapa Leaflet/OpenStreetMap con marcadores sincronizados con el listado, punto azul con tu posición y encuadre automático de los resultados.
 - Ficha de cafetería: distancia a tu posición, horario, teléfono, enlace a Google Maps, menú y reseñas.
 - Formulario de reseñas con validación en cliente y servidor, contador de caracteres y estados de éxito/error.
+- **Puntuación del menú**: además de la valoración general, cada reseña puntúa el menú de 1 a 5; la ficha muestra la media del menú junto a la valoración general.
 - Valoración media y número de reseñas actualizados al publicar.
 - Diseño responsive (móvil, tablet, escritorio) y navegación por teclado.
 - SEO técnico: canonical, Open Graph, Twitter Card, JSON-LD, `robots.txt`, `sitemap.xml` y favicon.
@@ -213,7 +214,7 @@ curl "http://localhost:5067/api/cafes?search=malasa%C3%B1a"
 curl "http://localhost:5067/api/cafes?lat=40.4168&lng=-3.7038&radiusKm=3"
 curl -X POST "http://localhost:5067/api/cafes/11111111-1111-1111-1111-111111111111/reviews" \
   -H "Content-Type: application/json" \
-  -d '{"author":"Ana","rating":5,"comment":"Un café excelente y un ambiente muy tranquilo."}'
+  -d '{"author":"Ana","rating":5,"menuRating":5,"comment":"Un café excelente y un ambiente muy tranquilo."}'
 ```
 
 La validación devuelve `400` con `ValidationProblemDetails`; los parámetros geográficos se comprueban antes de llegar a la base de datos.
@@ -238,7 +239,7 @@ cd backend
 dotnet test
 ```
 
-- 18 pruebas unitarias: validador de reseñas (autor, longitudes, rating y comentario) y repositorio en memoria (búsqueda, radio, reseñas y datos de ejemplo).
+- 20 pruebas unitarias: validador de reseñas (autor, longitudes, rating, puntuación del menú y comentario) y repositorio en memoria (búsqueda, radio, reseñas y datos de ejemplo).
 - `dotnet build` sin advertencias ni errores.
 - Migración EF Core con PostGIS incluida en el repositorio.
 - Verificado contra PostgreSQL 16 + PostGIS 3.4 reales: migración y seed automáticos, listado, filtro por radio (`geography`), detalle y alta de reseñas con recálculo de la media. También verificado el arranque sin base de datos (modo demo en memoria).

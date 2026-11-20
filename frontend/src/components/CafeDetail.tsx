@@ -78,6 +78,14 @@ export function CafeDetail({
   const hasMenu = cafe.menu.length > 0;
   const visibleTab = hasMenu ? activeTab : 'reviews';
 
+  const menuRatings = cafe.reviews
+    .map((review) => review.menuRating)
+    .filter((value): value is number => typeof value === 'number');
+  const menuAverage =
+    menuRatings.length > 0
+      ? menuRatings.reduce((total, value) => total + value, 0) / menuRatings.length
+      : null;
+
   return (
     <section className="card flex h-full flex-col overflow-hidden">
       <div className="border-b border-coffee-100 p-5">
@@ -103,6 +111,16 @@ export function CafeDetail({
               </div>
             ) : (
               <p className="mt-2 text-xs text-coffee-500">Sin reseñas todavía</p>
+            )}
+            {menuAverage !== null && (
+              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-coffee-600">
+                <UtensilsCrossed className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="font-medium">Menú</span>
+                <StarRating value={menuAverage} label="del menú" />
+                <span className="font-semibold text-coffee-900">
+                  {menuAverage.toFixed(1).replace('.', ',')}
+                </span>
+              </div>
             )}
           </div>
 
@@ -277,7 +295,16 @@ export function CafeDetail({
                         </p>
                       </div>
                     </div>
-                    <StarRating value={review.rating} />
+                    <div className="flex flex-col items-end gap-1">
+                      <StarRating value={review.rating} />
+                      {typeof review.menuRating === 'number' && (
+                        <span className="flex items-center gap-1 text-[11px] text-coffee-500">
+                          <UtensilsCrossed className="h-3 w-3" aria-hidden="true" />
+                          Menú
+                          <StarRating value={review.menuRating} label="del menú" />
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-coffee-700">
                     {review.comment}

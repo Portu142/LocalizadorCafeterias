@@ -56,6 +56,7 @@ public class InMemoryCafeRepositoryTests
             CafeId = cafe.Id,
             Author = "Prueba",
             Rating = 4,
+            MenuRating = 4,
             Comment = "Comentario de prueba"
         };
 

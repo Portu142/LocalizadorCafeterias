@@ -127,6 +127,9 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("MenuRating")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Rating")
                         .HasColumnType("integer");
 
@@ -139,6 +142,8 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
 
                     b.ToTable("reviews", null, t =>
                         {
+                            t.HasCheckConstraint("CK_reviews_menu_rating", "\"MenuRating\" BETWEEN 1 AND 5");
+
                             t.HasCheckConstraint("CK_reviews_rating", "\"Rating\" BETWEEN 1 AND 5");
                         });
                 });

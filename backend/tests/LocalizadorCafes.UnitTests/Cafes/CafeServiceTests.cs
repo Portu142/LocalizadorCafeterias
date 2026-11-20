@@ -14,8 +14,8 @@ public class CafeServiceTests
     public async Task SearchAsync_ShouldReturnAverageRatingAndReviewCount()
     {
         var cafe = CreateCafe();
-        cafe.Reviews.Add(new Review { Author = "A", Rating = 5, Comment = "Genial" });
-        cafe.Reviews.Add(new Review { Author = "B", Rating = 3, Comment = "Normal" });
+        cafe.Reviews.Add(new Review { Author = "A", Rating = 5, MenuRating = 5, Comment = "Genial" });
+        cafe.Reviews.Add(new Review { Author = "B", Rating = 3, MenuRating = 3, Comment = "Normal" });
 
         var repository = new Mock<ICafeRepository>();
         repository
@@ -48,7 +48,7 @@ public class CafeServiceTests
 
         var result = await service.AddReviewAsync(
             Guid.NewGuid(),
-            new CreateReviewRequest("Ana", 5, "Bueno"));
+            new CreateReviewRequest("Ana", 5, 4, "Bueno"));
 
         result.Should().BeNull();
     }
@@ -70,12 +70,13 @@ public class CafeServiceTests
 
         var result = await service.AddReviewAsync(
             cafe.Id,
-            new CreateReviewRequest("  Ana  ", 5, "  Muy bueno  "));
+            new CreateReviewRequest("  Ana  ", 5, 4, "  Muy bueno  "));
 
         result.Should().NotBeNull();
         result!.Author.Should().Be("Ana");
         result.Comment.Should().Be("Muy bueno");
         result.Rating.Should().Be(5);
+        result.MenuRating.Should().Be(4);
     }
 
     private static Cafe CreateCafe()

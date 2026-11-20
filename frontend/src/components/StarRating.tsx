@@ -4,11 +4,14 @@ import { cn } from '../lib/utils';
 type StarRatingProps = {
   value: number;
   size?: 'sm' | 'md';
+  /** Etiqueta accesible para distinguir puntuaciones (p. ej. «Menú»). */
+  label?: string;
   onChange?: (value: number) => void;
 };
 
-export function StarRating({ value, size = 'sm', onChange }: StarRatingProps) {
+export function StarRating({ value, size = 'sm', label, onChange }: StarRatingProps) {
   const iconClass = size === 'sm' ? 'h-3.5 w-3.5' : 'h-5 w-5';
+  const formatted = value.toFixed(1).replace('.', ',');
 
   return (
     <div
@@ -16,8 +19,12 @@ export function StarRating({ value, size = 'sm', onChange }: StarRatingProps) {
       role={onChange ? 'group' : 'img'}
       aria-label={
         onChange
-          ? 'Selecciona una puntuación de 1 a 5 estrellas'
-          : `Valoración: ${value.toFixed(1).replace('.', ',')} de 5 estrellas`
+          ? label
+            ? `Selecciona la puntuación ${label} de 1 a 5 estrellas`
+            : 'Selecciona una puntuación de 1 a 5 estrellas'
+          : label
+            ? `Valoración ${label}: ${formatted} de 5 estrellas`
+            : `Valoración: ${formatted} de 5 estrellas`
       }
     >
       {[1, 2, 3, 4, 5].map((star) => {

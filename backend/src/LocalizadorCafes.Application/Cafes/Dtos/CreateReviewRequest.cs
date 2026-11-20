@@ -1,3 +1,3 @@
 namespace LocalizadorCafes.Application.Cafes.Dtos;
 
-public record CreateReviewRequest(string Author, int Rating, string Comment);
+public record CreateReviewRequest(string Author, int Rating, int MenuRating, string Comment);

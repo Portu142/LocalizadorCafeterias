@@ -15,6 +15,7 @@ type FieldErrors = {
 export function ReviewForm({ cafeId }: ReviewFormProps) {
   const [author, setAuthor] = useState('');
   const [rating, setRating] = useState(5);
+  const [menuRating, setMenuRating] = useState(5);
   const [comment, setComment] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [success, setSuccess] = useState(false);
@@ -57,11 +58,12 @@ export function ReviewForm({ cafeId }: ReviewFormProps) {
     }
 
     mutation.mutate(
-      { author, rating, comment },
+      { author, rating, menuRating, comment },
       {
         onSuccess: () => {
           setAuthor('');
           setRating(5);
+          setMenuRating(5);
           setComment('');
           setErrors({});
           setSuccess(true);
@@ -117,9 +119,24 @@ export function ReviewForm({ cafeId }: ReviewFormProps) {
 
         <div>
           <span className="mb-1 block text-xs font-medium text-coffee-700">
-            Puntuación
+            Puntuación general
           </span>
           <StarRating value={rating} size="md" onChange={setRating} />
+        </div>
+
+        <div>
+          <span className="mb-1 block text-xs font-medium text-coffee-700">
+            Puntuación del menú
+          </span>
+          <StarRating
+            value={menuRating}
+            size="md"
+            label="del menú"
+            onChange={setMenuRating}
+          />
+          <p className="mt-1 text-[11px] text-coffee-500">
+            Valora la calidad y la variedad de lo que has tomado.
+          </p>
         </div>
 
         <div>

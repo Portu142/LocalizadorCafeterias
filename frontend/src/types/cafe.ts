@@ -19,6 +19,8 @@ export type Review = {
   id: string;
   author: string;
   rating: number;
+  /** Puntuación del menú (1-5). Opcional en reseñas antiguas guardadas en localStorage. */
+  menuRating?: number;
   comment: string;
   createdAt: string;
 };
@@ -33,5 +35,6 @@ export type CafeDetail = CafeSummary & {
 export type CreateReviewRequest = {
   author: string;
   rating: number;
+  menuRating: number;
   comment: string;
 };

@@ -9,7 +9,10 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
     public void Configure(EntityTypeBuilder<Review> builder)
     {
         builder.ToTable("reviews", table =>
-            table.HasCheckConstraint("CK_reviews_rating", "\"Rating\" BETWEEN 1 AND 5"));
+        {
+            table.HasCheckConstraint("CK_reviews_rating", "\"Rating\" BETWEEN 1 AND 5");
+            table.HasCheckConstraint("CK_reviews_menu_rating", "\"MenuRating\" BETWEEN 1 AND 5");
+        });
 
         builder.HasKey(review => review.Id);
 
@@ -22,6 +25,9 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
             .IsRequired();
 
         builder.Property(review => review.Rating)
+            .IsRequired();
+
+        builder.Property(review => review.MenuRating)
             .IsRequired();
     }
 }
