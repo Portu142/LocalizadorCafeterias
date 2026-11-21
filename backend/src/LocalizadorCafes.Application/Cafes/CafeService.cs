@@ -1,3 +1,5 @@
+using FluentValidation;
+using FluentValidation.Results;
 using LocalizadorCafes.Application.Cafes.Dtos;
 using LocalizadorCafes.Application.Common.Interfaces;
 using LocalizadorCafes.Domain.Entities;
@@ -47,17 +49,36 @@ public class CafeService
             return null;
         }
 
+        var menuNames = cafe.Menu.ToDictionary(item => item.Id, item => item.Name);
+        var itemRatings = request.ItemRatings ?? Array.Empty<CreateMenuItemRating>();
+
+        if (itemRatings.Any(rating => !menuNames.ContainsKey(rating.MenuItemId)))
+        {
+            throw new ValidationException(new[]
+            {
+                new ValidationFailure(
+                    nameof(request.ItemRatings),
+                    "Alguna de las puntuaciones no corresponde a un plato de esta cafetería.")
+            });
+        }
+
         var review = new Review
         {
             CafeId = cafeId,
             Author = request.Author.Trim(),
             Rating = request.Rating,
-            MenuRating = request.MenuRating,
-            Comment = request.Comment.Trim()
+            Comment = request.Comment.Trim(),
+            MenuItemRatings = itemRatings
+                .Select(rating => new MenuItemRating
+                {
+                    MenuItemId = rating.MenuItemId,
+                    Score = rating.Score
+                })
+                .ToList()
         };
 
         await _cafeRepository.AddReviewAsync(review, cancellationToken);
-        return ToReviewDto(review);
+        return ToReviewDto(review, menuNames);
     }
 
     private static CafeSummaryDto ToSummary(Cafe cafe)
@@ -81,6 +102,7 @@ public class CafeService
         var reviews = cafe.Reviews
             .OrderByDescending(review => review.CreatedAt)
             .ToList();
+        var menuNames = cafe.Menu.ToDictionary(item => item.Id, item => item.Name);
 
         return new CafeDetailDto(
             cafe.Id,
@@ -97,7 +119,7 @@ public class CafeService
                 .OrderBy(item => item.Name)
                 .Select(item => new MenuItemDto(item.Id, item.Name, item.Price))
                 .ToList(),
-            reviews.Select(ToReviewDto).ToList());
+            reviews.Select(review => ToReviewDto(review, menuNames)).ToList());
     }
 
     private static double CalculateRating(IReadOnlyCollection<Review> reviews)
@@ -107,14 +129,22 @@ public class CafeService
             : Math.Round(reviews.Average(review => review.Rating), 1);
     }
 
-    private static ReviewDto ToReviewDto(Review review)
+    private static ReviewDto ToReviewDto(
+        Review review,
+        IReadOnlyDictionary<Guid, string> menuNames)
     {
         return new ReviewDto(
             review.Id,
             review.Author,
             review.Rating,
-            review.MenuRating,
             review.Comment,
-            review.CreatedAt);
+            review.CreatedAt,
+            review.MenuItemRatings
+                .Select(rating => new MenuItemRatingDto(
+                    rating.MenuItemId,
+                    menuNames.GetValueOrDefault(rating.MenuItemId, "Plato"),
+                    rating.Score))
+                .OrderBy(rating => rating.MenuItemName)
+                .ToList());
     }
 }

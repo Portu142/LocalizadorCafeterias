@@ -15,12 +15,22 @@ public class CreateReviewRequestValidator : AbstractValidator<CreateReviewReques
         RuleFor(x => x.Rating)
             .InclusiveBetween(1, 5).WithMessage("La puntuación debe estar entre 1 y 5.");
 
-        RuleFor(x => x.MenuRating)
-            .InclusiveBetween(1, 5).WithMessage("La puntuación del menú debe estar entre 1 y 5.");
-
         RuleFor(x => x.Comment)
             .NotEmpty().WithMessage("El comentario es obligatorio.")
             .MinimumLength(10).WithMessage("El comentario debe tener al menos 10 caracteres.")
             .MaximumLength(500).WithMessage("El comentario no puede superar los 500 caracteres.");
+
+        RuleFor(x => x.ItemRatings)
+            .Must(items => items is null || items.Select(item => item.MenuItemId).Distinct().Count() == items.Count)
+            .WithMessage("No se puede puntuar el mismo plato más de una vez.");
+
+        RuleForEach(x => x.ItemRatings).ChildRules(item =>
+        {
+            item.RuleFor(x => x.MenuItemId)
+                .NotEmpty().WithMessage("El plato no es válido.");
+
+            item.RuleFor(x => x.Score)
+                .InclusiveBetween(1, 5).WithMessage("La puntuación del plato debe estar entre 1 y 5.");
+        });
     }
 }

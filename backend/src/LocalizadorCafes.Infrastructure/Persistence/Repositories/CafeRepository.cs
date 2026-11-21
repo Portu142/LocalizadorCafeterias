@@ -55,6 +55,7 @@ public class CafeRepository : ICafeRepository
             .AsNoTracking()
             .Include(cafe => cafe.Menu)
             .Include(cafe => cafe.Reviews)
+                .ThenInclude(review => review.MenuItemRatings)
             .FirstOrDefaultAsync(cafe => cafe.Id == id, cancellationToken);
     }
 

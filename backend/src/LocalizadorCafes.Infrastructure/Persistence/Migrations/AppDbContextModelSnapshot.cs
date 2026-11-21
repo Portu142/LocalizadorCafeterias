@@ -105,6 +105,40 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
                     b.ToTable("menu_items", (string)null);
                 });
 
+            modelBuilder.Entity("LocalizadorCafes.Domain.Entities.MenuItemRating", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("MenuItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ReviewId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MenuItemId");
+
+                    b.HasIndex("ReviewId", "MenuItemId")
+                        .IsUnique();
+
+                    b.ToTable("menu_item_ratings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_menu_item_ratings_score", "\"Score\" BETWEEN 1 AND 5");
+                        });
+                });
+
             modelBuilder.Entity("LocalizadorCafes.Domain.Entities.Review", b =>
                 {
                     b.Property<Guid>("Id")
@@ -127,9 +161,6 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("MenuRating")
-                        .HasColumnType("integer");
-
                     b.Property<int>("Rating")
                         .HasColumnType("integer");
 
@@ -142,8 +173,6 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
 
                     b.ToTable("reviews", null, t =>
                         {
-                            t.HasCheckConstraint("CK_reviews_menu_rating", "\"MenuRating\" BETWEEN 1 AND 5");
-
                             t.HasCheckConstraint("CK_reviews_rating", "\"Rating\" BETWEEN 1 AND 5");
                         });
                 });
@@ -157,6 +186,25 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Cafe");
+                });
+
+            modelBuilder.Entity("LocalizadorCafes.Domain.Entities.MenuItemRating", b =>
+                {
+                    b.HasOne("LocalizadorCafes.Domain.Entities.MenuItem", "MenuItem")
+                        .WithMany("Ratings")
+                        .HasForeignKey("MenuItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LocalizadorCafes.Domain.Entities.Review", "Review")
+                        .WithMany("MenuItemRatings")
+                        .HasForeignKey("ReviewId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MenuItem");
+
+                    b.Navigation("Review");
                 });
 
             modelBuilder.Entity("LocalizadorCafes.Domain.Entities.Review", b =>
@@ -175,6 +223,16 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
                     b.Navigation("Menu");
 
                     b.Navigation("Reviews");
+                });
+
+            modelBuilder.Entity("LocalizadorCafes.Domain.Entities.MenuItem", b =>
+                {
+                    b.Navigation("Ratings");
+                });
+
+            modelBuilder.Entity("LocalizadorCafes.Domain.Entities.Review", b =>
+                {
+                    b.Navigation("MenuItemRatings");
                 });
 #pragma warning restore 612, 618
         }

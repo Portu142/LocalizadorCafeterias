@@ -74,16 +74,30 @@ export function CafeDetail({
   }
 
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${cafe.latitude},${cafe.longitude}`;
-  // Sin menú (p. ej. cafés de OpenStreetMap) solo se muestra la pestaña de reseñas.
   const hasMenu = cafe.menu.length > 0;
-  const visibleTab = hasMenu ? activeTab : 'reviews';
 
-  const menuRatings = cafe.reviews
-    .map((review) => review.menuRating)
-    .filter((value): value is number => typeof value === 'number');
+  // Media de cada plato y media global del menú a partir de las reseñas.
+  const menuStats = cafe.menu.map((item) => {
+    const scores = cafe.reviews.flatMap((review) =>
+      (review.itemRatings ?? [])
+        .filter((rating) => rating.menuItemId === item.id)
+        .map((rating) => rating.score),
+    );
+
+    return {
+      ...item,
+      scores,
+      average:
+        scores.length > 0
+          ? scores.reduce((total, score) => total + score, 0) / scores.length
+          : null,
+    };
+  });
+
+  const allMenuScores = menuStats.flatMap((item) => item.scores);
   const menuAverage =
-    menuRatings.length > 0
-      ? menuRatings.reduce((total, value) => total + value, 0) / menuRatings.length
+    allMenuScores.length > 0
+      ? allMenuScores.reduce((total, score) => total + score, 0) / allMenuScores.length
       : null;
 
   return (
@@ -183,48 +197,46 @@ export function CafeDetail({
         role="tablist"
         aria-label="Información de la cafetería"
       >
-        {hasMenu && (
-          <button
-            type="button"
-            role="tab"
-            id="tab-menu"
-            aria-selected={visibleTab === 'menu'}
-            aria-controls="panel-menu"
-            tabIndex={visibleTab === 'menu' ? 0 : -1}
-            onClick={() => setActiveTab('menu')}
-            onKeyDown={(event) => {
-              if (event.key === 'ArrowRight') {
-                setActiveTab('reviews');
-                document.getElementById('tab-reviews')?.focus();
-              }
-            }}
-            className={cn(
-              'inline-flex items-center gap-2 rounded-t-xl px-3 py-2 text-sm font-semibold transition',
-              visibleTab === 'menu'
-                ? 'border-b-2 border-caramel-500 text-coffee-950'
-                : 'text-coffee-500 hover:text-coffee-800',
-            )}
-          >
-            <UtensilsCrossed className="h-4 w-4" aria-hidden="true" /> Menú
-          </button>
-        )}
+        <button
+          type="button"
+          role="tab"
+          id="tab-menu"
+          aria-selected={activeTab === 'menu'}
+          aria-controls="panel-menu"
+          tabIndex={activeTab === 'menu' ? 0 : -1}
+          onClick={() => setActiveTab('menu')}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowRight') {
+              setActiveTab('reviews');
+              document.getElementById('tab-reviews')?.focus();
+            }
+          }}
+          className={cn(
+            'inline-flex items-center gap-2 rounded-t-xl px-3 py-2 text-sm font-semibold transition',
+            activeTab === 'menu'
+              ? 'border-b-2 border-caramel-500 text-coffee-950'
+              : 'text-coffee-500 hover:text-coffee-800',
+          )}
+        >
+          <UtensilsCrossed className="h-4 w-4" aria-hidden="true" /> Menú
+        </button>
         <button
           type="button"
           role="tab"
           id="tab-reviews"
-          aria-selected={visibleTab === 'reviews'}
+          aria-selected={activeTab === 'reviews'}
           aria-controls="panel-reviews"
-          tabIndex={visibleTab === 'reviews' ? 0 : -1}
+          tabIndex={activeTab === 'reviews' ? 0 : -1}
           onClick={() => setActiveTab('reviews')}
           onKeyDown={(event) => {
-            if (event.key === 'ArrowLeft' && hasMenu) {
+            if (event.key === 'ArrowLeft') {
               setActiveTab('menu');
               document.getElementById('tab-menu')?.focus();
             }
           }}
           className={cn(
             'inline-flex items-center gap-2 rounded-t-xl px-3 py-2 text-sm font-semibold transition',
-            visibleTab === 'reviews'
+            activeTab === 'reviews'
               ? 'border-b-2 border-caramel-500 text-coffee-950'
               : 'text-coffee-500 hover:text-coffee-800',
           )}
@@ -234,41 +246,78 @@ export function CafeDetail({
       </div>
 
       <div className="flex-1 overflow-y-auto p-5">
-        {hasMenu && (
-          <div
-            id="panel-menu"
-            role="tabpanel"
-            aria-labelledby="tab-menu"
-            hidden={visibleTab !== 'menu'}
-          >
-            <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-coffee-500">
-              Menú destacado
-            </h3>
-            <ul className="mt-3 divide-y divide-coffee-100">
-              {cafe.menu.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-center justify-between gap-4 py-3"
-                >
-                  <span className="text-sm text-coffee-800">{item.name}</span>
-                  <span className="shrink-0 text-sm font-semibold text-coffee-950">
-                    {formatPrice(item.price)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+        <div
+          id="panel-menu"
+          role="tabpanel"
+          aria-labelledby="tab-menu"
+          hidden={activeTab !== 'menu'}
+        >
+          {hasMenu ? (
+            <>
+              <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-coffee-500">
+                Menú destacado
+              </h3>
+              <ul className="mt-3 divide-y divide-coffee-100">
+                {menuStats.map((item) => (
+                  <li key={item.id} className="py-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-sm text-coffee-800">{item.name}</span>
+                      <span className="shrink-0 text-sm font-semibold text-coffee-950">
+                        {formatPrice(item.price)}
+                      </span>
+                    </div>
+                    {item.average !== null && (
+                      <div className="mt-1 flex items-center gap-1.5 text-[11px] text-coffee-500">
+                        <StarRating
+                          value={item.average}
+                          label={`de ${item.name}`}
+                        />
+                        <span className="font-semibold text-coffee-800">
+                          {item.average.toFixed(1).replace('.', ',')}
+                        </span>
+                        <span>
+                          ({item.scores.length}{' '}
+                          {item.scores.length === 1 ? 'puntuación' : 'puntuaciones'})
+                        </span>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
 
-            <div className="mt-6 rounded-2xl bg-cream-100 p-4 text-xs leading-5 text-coffee-600">
-              Precios orientativos. El menú puede variar según la temporada.
+              <div className="mt-6 rounded-2xl bg-cream-100 p-4 text-xs leading-5 text-coffee-600">
+                Precios orientativos. El menú puede variar según la temporada.
+              </div>
+            </>
+          ) : (
+            <div className="rounded-2xl bg-cream-100 p-5 text-center">
+              <UtensilsCrossed
+                className="mx-auto h-6 w-6 text-coffee-400"
+                aria-hidden="true"
+              />
+              <p className="mt-2 text-sm font-medium text-coffee-800">
+                Este café no tiene menú publicado
+              </p>
+              <p className="mt-1 text-xs leading-5 text-coffee-600">
+                Los datos de OpenStreetMap no incluyen cartas. Puedes consultar
+                horarios, ubicación y reseñas de la comunidad.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('reviews')}
+                className="mt-3 text-xs font-semibold text-caramel-600 hover:text-caramel-500"
+              >
+                Ver reseñas
+              </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div
           id="panel-reviews"
           role="tabpanel"
           aria-labelledby="tab-reviews"
-          hidden={visibleTab !== 'reviews'}
+          hidden={activeTab !== 'reviews'}
         >
           <div className="space-y-3">
             {cafe.reviews.length === 0 ? (
@@ -295,26 +344,35 @@ export function CafeDetail({
                         </p>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <StarRating value={review.rating} />
-                      {typeof review.menuRating === 'number' && (
-                        <span className="flex items-center gap-1 text-[11px] text-coffee-500">
-                          <UtensilsCrossed className="h-3 w-3" aria-hidden="true" />
-                          Menú
-                          <StarRating value={review.menuRating} label="del menú" />
-                        </span>
-                      )}
-                    </div>
+                    <StarRating value={review.rating} />
                   </div>
                   <p className="mt-3 text-sm leading-6 text-coffee-700">
                     {review.comment}
                   </p>
+                  {(review.itemRatings?.length ?? 0) > 0 && (
+                    <ul className="mt-3 flex flex-wrap gap-1.5">
+                      {review.itemRatings!.map((rating) => (
+                        <li
+                          key={rating.menuItemId}
+                          className="inline-flex items-center gap-1 rounded-full bg-cream-100 px-2 py-0.5 text-[11px] text-coffee-600"
+                        >
+                          <span className="font-medium text-coffee-800">
+                            {rating.menuItemName}
+                          </span>
+                          <StarRating value={rating.score} label={rating.menuItemName} />
+                          <span className="font-semibold text-coffee-900">
+                            {rating.score}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </article>
               ))
             )}
           </div>
 
-          <ReviewForm cafeId={cafe.id} />
+          <ReviewForm cafeId={cafe.id} menu={cafe.menu} />
         </div>
       </div>
     </section>

@@ -15,14 +15,20 @@ export type MenuItem = {
   price: number;
 };
 
+export type MenuItemRating = {
+  menuItemId: string;
+  menuItemName: string;
+  score: number;
+};
+
 export type Review = {
   id: string;
   author: string;
   rating: number;
-  /** Puntuación del menú (1-5). Opcional en reseñas antiguas guardadas en localStorage. */
-  menuRating?: number;
   comment: string;
   createdAt: string;
+  /** Puntuación de cada plato. Puede faltar en reseñas antiguas guardadas en localStorage. */
+  itemRatings?: MenuItemRating[];
 };
 
 export type CafeDetail = CafeSummary & {
@@ -32,9 +38,14 @@ export type CafeDetail = CafeSummary & {
   reviews: Review[];
 };
 
+export type CreateMenuItemRating = {
+  menuItemId: string;
+  score: number;
+};
+
 export type CreateReviewRequest = {
   author: string;
   rating: number;
-  menuRating: number;
   comment: string;
+  itemRatings: CreateMenuItemRating[];
 };

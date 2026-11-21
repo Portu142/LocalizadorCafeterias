@@ -1,4 +1,5 @@
 using FluentAssertions;
+using FluentValidation;
 using LocalizadorCafes.Application.Cafes;
 using LocalizadorCafes.Application.Cafes.Dtos;
 using LocalizadorCafes.Application.Common.Interfaces;
@@ -14,8 +15,8 @@ public class CafeServiceTests
     public async Task SearchAsync_ShouldReturnAverageRatingAndReviewCount()
     {
         var cafe = CreateCafe();
-        cafe.Reviews.Add(new Review { Author = "A", Rating = 5, MenuRating = 5, Comment = "Genial" });
-        cafe.Reviews.Add(new Review { Author = "B", Rating = 3, MenuRating = 3, Comment = "Normal" });
+        cafe.Reviews.Add(new Review { Author = "A", Rating = 5, Comment = "Genial" });
+        cafe.Reviews.Add(new Review { Author = "B", Rating = 3, Comment = "Normal" });
 
         var repository = new Mock<ICafeRepository>();
         repository
@@ -48,7 +49,7 @@ public class CafeServiceTests
 
         var result = await service.AddReviewAsync(
             Guid.NewGuid(),
-            new CreateReviewRequest("Ana", 5, 4, "Bueno"));
+            new CreateReviewRequest("Ana", 5, "Bueno"));
 
         result.Should().BeNull();
     }
@@ -70,18 +71,92 @@ public class CafeServiceTests
 
         var result = await service.AddReviewAsync(
             cafe.Id,
-            new CreateReviewRequest("  Ana  ", 5, 4, "  Muy bueno  "));
+            new CreateReviewRequest("  Ana  ", 5, "  Muy bueno  "));
 
         result.Should().NotBeNull();
         result!.Author.Should().Be("Ana");
         result.Comment.Should().Be("Muy bueno");
         result.Rating.Should().Be(5);
-        result.MenuRating.Should().Be(4);
+        result.ItemRatings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AddReviewAsync_ShouldMapItemRatingsToMenuItemNames()
+    {
+        var cafe = CreateCafe();
+        var latte = cafe.Menu.First(item => item.Name == "Café con leche");
+        var cake = cafe.Menu.First(item => item.Name == "Tarta de queso");
+
+        Review? stored = null;
+        var repository = new Mock<ICafeRepository>();
+        repository
+            .Setup(x => x.GetByIdAsync(cafe.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cafe);
+        repository
+            .Setup(x => x.AddReviewAsync(It.IsAny<Review>(), It.IsAny<CancellationToken>()))
+            .Callback<Review, CancellationToken>((review, _) => stored = review)
+            .Returns(Task.CompletedTask);
+
+        var service = new CafeService(repository.Object);
+
+        var result = await service.AddReviewAsync(
+            cafe.Id,
+            new CreateReviewRequest(
+                "Ana",
+                5,
+                "Todo buenísimo.",
+                new[]
+                {
+                    new CreateMenuItemRating(latte.Id, 4),
+                    new CreateMenuItemRating(cake.Id, 5)
+                }));
+
+        result.Should().NotBeNull();
+        result!.ItemRatings.Should().HaveCount(2);
+        result.ItemRatings.Should().ContainSingle(rating =>
+            rating.MenuItemId == latte.Id && rating.MenuItemName == latte.Name && rating.Score == 4);
+        result.ItemRatings.Should().ContainSingle(rating =>
+            rating.MenuItemId == cake.Id && rating.MenuItemName == cake.Name && rating.Score == 5);
+
+        stored.Should().NotBeNull();
+        stored!.MenuItemRatings.Should().HaveCount(2);
+        stored.MenuItemRatings.Select(rating => (rating.MenuItemId, rating.Score))
+            .Should().BeEquivalentTo(new[] { (latte.Id, 4), (cake.Id, 5) });
+    }
+
+    [Fact]
+    public async Task AddReviewAsync_ShouldThrow_WhenItemDoesNotBelongToCafe()
+    {
+        var cafe = CreateCafe();
+
+        var repository = new Mock<ICafeRepository>();
+        repository
+            .Setup(x => x.GetByIdAsync(cafe.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cafe);
+        repository
+            .Setup(x => x.AddReviewAsync(It.IsAny<Review>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var service = new CafeService(repository.Object);
+
+        var act = () => service.AddReviewAsync(
+            cafe.Id,
+            new CreateReviewRequest(
+                "Ana",
+                5,
+                "Comentario válido.",
+                new[] { new CreateMenuItemRating(Guid.NewGuid(), 5) }));
+
+        await act.Should().ThrowAsync<ValidationException>();
+
+        repository.Verify(
+            x => x.AddReviewAsync(It.IsAny<Review>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     private static Cafe CreateCafe()
     {
-        return new Cafe
+        var cafe = new Cafe
         {
             Name = "Test Cafe",
             Address = "Calle Test 1",
@@ -90,5 +165,10 @@ public class CafeServiceTests
             Hours = "9-18",
             Location = new Point(-3.7038, 40.4168) { SRID = 4326 }
         };
+
+        cafe.Menu.Add(new MenuItem { CafeId = cafe.Id, Name = "Café con leche", Price = 2.50m });
+        cafe.Menu.Add(new MenuItem { CafeId = cafe.Id, Name = "Tarta de queso", Price = 4.50m });
+
+        return cafe;
     }
 }

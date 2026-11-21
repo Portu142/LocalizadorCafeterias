@@ -26,8 +26,10 @@ public static class DemoData
                 ("Croissant", 2.20m),
                 ("Tarta de queso", 4.50m)
             });
-        central.Reviews.Add(CreateReview("Laura", 5, 5, "Ambiente increíble y café excelente.", 2026, 10, 12));
-        central.Reviews.Add(CreateReview("Carlos", 4, 4, "Buen lugar para trabajar, aunque se llena.", 2026, 9, 28));
+        AddReview(central, "Laura", 5, "Ambiente increíble y café excelente.", 2026, 10, 12,
+            ("Café con leche", 5), ("Tarta de queso", 5));
+        AddReview(central, "Carlos", 4, "Buen lugar para trabajar, aunque se llena.", 2026, 9, 28,
+            ("Cappuccino", 4), ("Croissant", 4));
 
         var toma = CreateCafe(
             "Toma Café",
@@ -44,8 +46,10 @@ public static class DemoData
                 ("Avocado toast", 6.50m),
                 ("Brownie", 3.50m)
             });
-        toma.Reviews.Add(CreateReview("Marta", 5, 5, "El mejor flat white de Madrid.", 2026, 10, 2));
-        toma.Reviews.Add(CreateReview("Diego", 5, 5, "Muy buen café y trato cercano.", 2026, 9, 15));
+        AddReview(toma, "Marta", 5, "El mejor flat white de Madrid.", 2026, 10, 2,
+            ("Flat white", 5), ("Brownie", 4));
+        AddReview(toma, "Diego", 5, "Muy buen café y trato cercano.", 2026, 9, 15,
+            ("Latte", 5), ("Avocado toast", 4));
 
         var hanso = CreateCafe(
             "HanSo Café",
@@ -62,8 +66,10 @@ public static class DemoData
                 ("Carrot cake", 4.20m),
                 ("Brunch", 12.00m)
             });
-        hanso.Reviews.Add(CreateReview("Ana", 5, 5, "Un sitio precioso y el matcha está delicioso.", 2026, 10, 8));
-        hanso.Reviews.Add(CreateReview("Pablo", 4, 4, "Buen brunch, algo caro.", 2026, 9, 22));
+        AddReview(hanso, "Ana", 5, "Un sitio precioso y el matcha está delicioso.", 2026, 10, 8,
+            ("Matcha latte", 5), ("Carrot cake", 5));
+        AddReview(hanso, "Pablo", 4, "Buen brunch, algo caro.", 2026, 9, 22,
+            ("Brunch", 4), ("Matcha latte", 4));
 
         var oriente = CreateCafe(
             "Café de Oriente",
@@ -80,8 +86,10 @@ public static class DemoData
                 ("Bocadillo", 5.50m),
                 ("Tarta", 5.00m)
             });
-        oriente.Reviews.Add(CreateReview("Lucía", 4, 3, "Vistas magníficas y café correcto.", 2026, 9, 30));
-        oriente.Reviews.Add(CreateReview("Javier", 5, 4, "Perfecto para una tarde tranquila.", 2026, 9, 10));
+        AddReview(oriente, "Lucía", 4, "Vistas magníficas y café correcto.", 2026, 9, 30,
+            ("Café solo", 4), ("Tarta", 3));
+        AddReview(oriente, "Javier", 5, "Perfecto para una tarde tranquila.", 2026, 9, 10,
+            ("Cortado", 5), ("Bocadillo", 4));
 
         var federal = CreateCafe(
             "Federal Café",
@@ -98,8 +106,10 @@ public static class DemoData
                 ("Pancakes", 7.00m),
                 ("Zumo natural", 3.50m)
             });
-        federal.Reviews.Add(CreateReview("Sofía", 5, 5, "El brunch es espectacular.", 2026, 10, 1));
-        federal.Reviews.Add(CreateReview("Andrés", 4, 4, "Buen ambiente, ideal para el fin de semana.", 2026, 9, 18));
+        AddReview(federal, "Sofía", 5, "El brunch es espectacular.", 2026, 10, 1,
+            ("Eggs benedict", 5), ("Pancakes", 5));
+        AddReview(federal, "Andrés", 4, "Buen ambiente, ideal para el fin de semana.", 2026, 9, 18,
+            ("Café con leche", 4), ("Zumo natural", 4));
 
         var bicicleta = CreateCafe(
             "La Bicicleta Café",
@@ -116,8 +126,10 @@ public static class DemoData
                 ("Tostada", 3.20m),
                 ("Brownie", 3.00m)
             });
-        bicicleta.Reviews.Add(CreateReview("Elena", 4, 4, "Muy acogedor y con buena música.", 2026, 9, 25));
-        bicicleta.Reviews.Add(CreateReview("Raúl", 4, 3, "Buen sitio para merendar.", 2026, 9, 5));
+        AddReview(bicicleta, "Elena", 4, "Muy acogedor y con buena música.", 2026, 9, 25,
+            ("Café bombón", 4), ("Tostada", 4));
+        AddReview(bicicleta, "Raúl", 4, "Buen sitio para merendar.", 2026, 9, 5,
+            ("Brownie", 3), ("Smoothie", 4));
 
         return new List<Cafe> { central, toma, hanso, oriente, federal, bicicleta };
     }
@@ -154,22 +166,34 @@ public static class DemoData
         return cafe;
     }
 
-    private static Review CreateReview(
+    private static void AddReview(
+        Cafe cafe,
         string author,
         int rating,
-        int menuRating,
         string comment,
         int year,
         int month,
-        int day)
+        int day,
+        params (string Item, int Score)[] itemRatings)
     {
-        return new Review
+        var review = new Review
         {
             Author = author,
             Rating = rating,
-            MenuRating = menuRating,
             Comment = comment,
             CreatedAt = new DateTimeOffset(year, month, day, 0, 0, 0, TimeSpan.Zero)
         };
+
+        foreach (var (itemName, score) in itemRatings)
+        {
+            var menuItem = cafe.Menu.First(item => item.Name == itemName);
+            review.MenuItemRatings.Add(new MenuItemRating
+            {
+                MenuItemId = menuItem.Id,
+                Score = score
+            });
+        }
+
+        cafe.Reviews.Add(review);
     }
 }

@@ -8,4 +8,5 @@ public class MenuItem : BaseEntity
     public Cafe Cafe { get; set; } = null!;
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
+    public ICollection<MenuItemRating> Ratings { get; set; } = new List<MenuItemRating>();
 }

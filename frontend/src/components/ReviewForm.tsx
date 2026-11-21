@@ -1,10 +1,12 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { CheckCircle2, Loader2, Send } from 'lucide-react';
 import { useCreateReview } from '../hooks/useCreateReview';
+import type { MenuItem } from '../types/cafe';
 import { StarRating } from './StarRating';
 
 type ReviewFormProps = {
   cafeId: string;
+  menu: MenuItem[];
 };
 
 type FieldErrors = {
@@ -12,10 +14,10 @@ type FieldErrors = {
   comment?: string;
 };
 
-export function ReviewForm({ cafeId }: ReviewFormProps) {
+export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
   const [author, setAuthor] = useState('');
   const [rating, setRating] = useState(5);
-  const [menuRating, setMenuRating] = useState(5);
+  const [itemScores, setItemScores] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [success, setSuccess] = useState(false);
@@ -58,12 +60,20 @@ export function ReviewForm({ cafeId }: ReviewFormProps) {
     }
 
     mutation.mutate(
-      { author, rating, menuRating, comment },
+      {
+        author,
+        rating,
+        comment,
+        // Solo se envían los platos que el usuario ha puntuado.
+        itemRatings: menu
+          .filter((item) => (itemScores[item.id] ?? 0) > 0)
+          .map((item) => ({ menuItemId: item.id, score: itemScores[item.id] ?? 0 })),
+      },
       {
         onSuccess: () => {
           setAuthor('');
           setRating(5);
-          setMenuRating(5);
+          setItemScores({});
           setComment('');
           setErrors({});
           setSuccess(true);
@@ -124,20 +134,53 @@ export function ReviewForm({ cafeId }: ReviewFormProps) {
           <StarRating value={rating} size="md" onChange={setRating} />
         </div>
 
-        <div>
-          <span className="mb-1 block text-xs font-medium text-coffee-700">
-            Puntuación del menú
-          </span>
-          <StarRating
-            value={menuRating}
-            size="md"
-            label="del menú"
-            onChange={setMenuRating}
-          />
-          <p className="mt-1 text-[11px] text-coffee-500">
-            Valora la calidad y la variedad de lo que has tomado.
-          </p>
-        </div>
+        {menu.length > 0 && (
+          <fieldset>
+            <legend className="mb-1 block text-xs font-medium text-coffee-700">
+              Puntuación del menú <span className="font-normal text-coffee-500">(opcional)</span>
+            </legend>
+            <p className="mb-2 text-[11px] text-coffee-500">
+              Puntúa solo los platos que hayas probado.
+            </p>
+            <ul className="space-y-1.5">
+              {menu.map((item) => {
+                const score = itemScores[item.id] ?? 0;
+
+                return (
+                  <li
+                    key={item.id}
+                    className="flex items-center justify-between gap-3 rounded-xl bg-cream-50 px-3 py-2"
+                  >
+                    <span className="text-xs text-coffee-800">{item.name}</span>
+                    <span className="flex items-center gap-1.5">
+                      <StarRating
+                        value={score}
+                        label={`del plato ${item.name}`}
+                        onChange={(value) =>
+                          setItemScores((current) => ({
+                            ...current,
+                            [item.id]: current[item.id] === value ? 0 : value,
+                          }))
+                        }
+                      />
+                      {score > 0 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setItemScores((current) => ({ ...current, [item.id]: 0 }))
+                          }
+                          className="text-[10px] font-medium text-coffee-500 underline-offset-2 hover:text-coffee-800 hover:underline"
+                        >
+                          Quitar
+                        </button>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </fieldset>
+        )}
 
         <div>
           <div className="mb-1 flex items-center justify-between gap-2">

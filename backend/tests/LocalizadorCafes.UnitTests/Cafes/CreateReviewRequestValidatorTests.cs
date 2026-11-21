@@ -12,7 +12,24 @@ public class CreateReviewRequestValidatorTests
     public void Validate_ShouldPass_WithValidRequest()
     {
         var result = _validator.TestValidate(
-            new CreateReviewRequest("Ana", 5, 5, "Un café excelente."));
+            new CreateReviewRequest("Ana", 5, "Un café excelente."));
+
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void Validate_ShouldPass_WithItemRatings()
+    {
+        var result = _validator.TestValidate(
+            new CreateReviewRequest(
+                "Ana",
+                5,
+                "Un café excelente.",
+                new[]
+                {
+                    new CreateMenuItemRating(Guid.NewGuid(), 5),
+                    new CreateMenuItemRating(Guid.NewGuid(), 3)
+                }));
 
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -23,7 +40,7 @@ public class CreateReviewRequestValidatorTests
     public void Validate_ShouldFail_WhenAuthorIsEmpty(string author)
     {
         var result = _validator.TestValidate(
-            new CreateReviewRequest(author, 5, 5, "Un café excelente."));
+            new CreateReviewRequest(author, 5, "Un café excelente."));
 
         result.ShouldHaveValidationErrorFor(request => request.Author);
     }
@@ -32,7 +49,7 @@ public class CreateReviewRequestValidatorTests
     public void Validate_ShouldFail_WhenAuthorIsTooLong()
     {
         var result = _validator.TestValidate(
-            new CreateReviewRequest(new string('a', 81), 5, 5, "Un café excelente."));
+            new CreateReviewRequest(new string('a', 81), 5, "Un café excelente."));
 
         result.ShouldHaveValidationErrorFor(request => request.Author);
     }
@@ -41,7 +58,7 @@ public class CreateReviewRequestValidatorTests
     public void Validate_ShouldFail_WhenAuthorIsTooShort()
     {
         var result = _validator.TestValidate(
-            new CreateReviewRequest("A", 5, 5, "Un café excelente."));
+            new CreateReviewRequest("A", 5, "Un café excelente."));
 
         result.ShouldHaveValidationErrorFor(request => request.Author);
     }
@@ -52,7 +69,7 @@ public class CreateReviewRequestValidatorTests
     public void Validate_ShouldFail_WhenRatingIsOutOfRange(int rating)
     {
         var result = _validator.TestValidate(
-            new CreateReviewRequest("Ana", rating, 5, "Un café excelente."));
+            new CreateReviewRequest("Ana", rating, "Un café excelente."));
 
         result.ShouldHaveValidationErrorFor(request => request.Rating);
     }
@@ -60,19 +77,55 @@ public class CreateReviewRequestValidatorTests
     [Theory]
     [InlineData(0)]
     [InlineData(6)]
-    public void Validate_ShouldFail_WhenMenuRatingIsOutOfRange(int menuRating)
+    public void Validate_ShouldFail_WhenItemScoreIsOutOfRange(int score)
     {
         var result = _validator.TestValidate(
-            new CreateReviewRequest("Ana", 5, menuRating, "Un café excelente."));
+            new CreateReviewRequest(
+                "Ana",
+                5,
+                "Un café excelente.",
+                new[] { new CreateMenuItemRating(Guid.NewGuid(), score) }));
 
-        result.ShouldHaveValidationErrorFor(request => request.MenuRating);
+        result.ShouldHaveValidationErrorFor("ItemRatings[0].Score");
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenItemIsRepeated()
+    {
+        var menuItemId = Guid.NewGuid();
+
+        var result = _validator.TestValidate(
+            new CreateReviewRequest(
+                "Ana",
+                5,
+                "Un café excelente.",
+                new[]
+                {
+                    new CreateMenuItemRating(menuItemId, 5),
+                    new CreateMenuItemRating(menuItemId, 4)
+                }));
+
+        result.ShouldHaveValidationErrorFor(request => request.ItemRatings);
+    }
+
+    [Fact]
+    public void Validate_ShouldFail_WhenItemIdIsEmpty()
+    {
+        var result = _validator.TestValidate(
+            new CreateReviewRequest(
+                "Ana",
+                5,
+                "Un café excelente.",
+                new[] { new CreateMenuItemRating(Guid.Empty, 5) }));
+
+        result.ShouldHaveValidationErrorFor("ItemRatings[0].MenuItemId");
     }
 
     [Fact]
     public void Validate_ShouldFail_WhenCommentIsEmpty()
     {
         var result = _validator.TestValidate(
-            new CreateReviewRequest("Ana", 5, 5, " "));
+            new CreateReviewRequest("Ana", 5, " "));
 
         result.ShouldHaveValidationErrorFor(request => request.Comment);
     }
@@ -81,7 +134,7 @@ public class CreateReviewRequestValidatorTests
     public void Validate_ShouldFail_WhenCommentIsTooLong()
     {
         var result = _validator.TestValidate(
-            new CreateReviewRequest("Ana", 5, 5, new string('a', 501)));
+            new CreateReviewRequest("Ana", 5, new string('a', 501)));
 
         result.ShouldHaveValidationErrorFor(request => request.Comment);
     }
@@ -90,7 +143,7 @@ public class CreateReviewRequestValidatorTests
     public void Validate_ShouldFail_WhenCommentIsTooShort()
     {
         var result = _validator.TestValidate(
-            new CreateReviewRequest("Ana", 5, 5, "Corto"));
+            new CreateReviewRequest("Ana", 5, "Corto"));
 
         result.ShouldHaveValidationErrorFor(request => request.Comment);
     }

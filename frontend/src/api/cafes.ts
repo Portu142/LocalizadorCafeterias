@@ -213,9 +213,16 @@ export async function createReview(
     id: crypto.randomUUID(),
     author: requestBody.author.trim(),
     rating: requestBody.rating,
-    menuRating: requestBody.menuRating,
     comment: requestBody.comment.trim(),
     createdAt: new Date().toISOString(),
+    itemRatings: requestBody.itemRatings.map((rating) => ({
+      menuItemId: rating.menuItemId,
+      menuItemName:
+        mockCafes
+          .find((cafe) => cafe.id === cafeId)
+          ?.menu.find((item) => item.id === rating.menuItemId)?.name ?? 'Plato',
+      score: rating.score,
+    })),
   };
 
   const stored = getStoredReviews();
