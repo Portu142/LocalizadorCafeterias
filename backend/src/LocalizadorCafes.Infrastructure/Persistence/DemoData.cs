@@ -19,6 +19,7 @@ public static class DemoData
             "Lun-Vie 08:00-20:00 · Sáb-Dom 09:00-21:00",
             40.4145,
             -3.6965,
+            new[] { CafeTags.Wifi, CafeTags.PowerOutlets, CafeTags.Accessible },
             new[]
             {
                 ("Café con leche", 2.50m),
@@ -39,6 +40,7 @@ public static class DemoData
             "Lun-Vie 08:30-19:00 · Sáb 09:00-20:00 · Dom 10:00-18:00",
             40.4255,
             -3.7045,
+            new[] { CafeTags.Wifi, CafeTags.Takeaway, CafeTags.Vegan },
             new[]
             {
                 ("Flat white", 3.20m),
@@ -59,6 +61,7 @@ public static class DemoData
             "Lun-Dom 09:00-21:00",
             40.4260,
             -3.7050,
+            new[] { CafeTags.Wifi, CafeTags.PowerOutlets, CafeTags.Vegan, CafeTags.Takeaway },
             new[]
             {
                 ("Matcha latte", 3.80m),
@@ -79,6 +82,7 @@ public static class DemoData
             "Lun-Dom 10:00-23:00",
             40.4175,
             -3.7105,
+            new[] { CafeTags.Terrace, CafeTags.Accessible },
             new[]
             {
                 ("Café solo", 2.00m),
@@ -86,6 +90,24 @@ public static class DemoData
                 ("Bocadillo", 5.50m),
                 ("Tarta", 5.00m)
             });
+        // Fotos reales de Wikimedia Commons con licencia libre: se sirven desde
+        // sus servidores y se muestran siempre con autor, licencia y enlace.
+        oriente.Photos.Add(new CafePhoto
+        {
+            Url = "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Caf%C3%A9_de_Oriente.jpg/960px-Caf%C3%A9_de_Oriente.jpg",
+            Author = "DIMSFIKAS",
+            License = "CC BY-SA 3.0",
+            SourceUrl = "https://commons.wikimedia.org/wiki/File:Caf%C3%A9_de_Oriente.jpg"
+        });
+        oriente.Photos.Add(new CafePhoto
+        {
+            Url = "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/01/Picatostes-Caf%C3%A9_de_Oriente_%28Madrid%29.jpg/960px-Picatostes-Caf%C3%A9_de_Oriente_%28Madrid%29.jpg",
+            Author = "Tamorlan",
+            License = "CC BY 3.0",
+            SourceUrl = "https://commons.wikimedia.org/wiki/File:Picatostes-Caf%C3%A9_de_Oriente_(Madrid).jpg",
+            CreatedAt = DateTimeOffset.UtcNow.AddSeconds(1)
+        });
+
         AddReview(oriente, "Lucía", 4, "Vistas magníficas y café correcto.", 2026, 9, 30,
             ("Café solo", 4), ("Tarta", 3));
         AddReview(oriente, "Javier", 5, "Perfecto para una tarde tranquila.", 2026, 9, 10,
@@ -99,6 +121,7 @@ public static class DemoData
             "Lun-Vie 08:00-20:00 · Sáb-Dom 09:00-21:00",
             40.4265,
             -3.7075,
+            new[] { CafeTags.Wifi, CafeTags.Terrace, CafeTags.PowerOutlets, CafeTags.PetFriendly },
             new[]
             {
                 ("Café con leche", 2.60m),
@@ -119,6 +142,7 @@ public static class DemoData
             "Lun-Dom 09:00-22:00",
             40.4235,
             -3.7030,
+            new[] { CafeTags.Wifi, CafeTags.Terrace, CafeTags.PetFriendly },
             new[]
             {
                 ("Café bombón", 2.40m),
@@ -142,6 +166,7 @@ public static class DemoData
         string hours,
         double latitude,
         double longitude,
+        IEnumerable<string> tags,
         IEnumerable<(string Name, decimal Price)> menu)
     {
         var cafe = new Cafe
@@ -151,7 +176,8 @@ public static class DemoData
             Neighborhood = neighborhood,
             Phone = phone,
             Hours = hours,
-            Location = new Point(longitude, latitude) { SRID = 4326 }
+            Location = new Point(longitude, latitude) { SRID = 4326 },
+            Tags = tags.ToList()
         };
 
         foreach (var item in menu)

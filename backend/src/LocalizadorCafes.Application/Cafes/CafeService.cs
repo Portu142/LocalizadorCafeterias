@@ -115,6 +115,19 @@ public class CafeService
             reviews.Count,
             cafe.Location.Y,
             cafe.Location.X,
+            cafe.Tags
+                .Where(CafeTags.All.Contains)
+                .Distinct()
+                .ToList(),
+            cafe.Photos
+                .OrderBy(photo => photo.CreatedAt)
+                .Select(photo => new CafePhotoDto(
+                    photo.Id,
+                    photo.Url,
+                    photo.Author,
+                    photo.License,
+                    photo.SourceUrl))
+                .ToList(),
             cafe.Menu
                 .OrderBy(item => item.Name)
                 .Select(item => new MenuItemDto(item.Id, item.Name, item.Price))

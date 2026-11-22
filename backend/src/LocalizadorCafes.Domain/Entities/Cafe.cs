@@ -13,4 +13,9 @@ public class Cafe : BaseEntity
     public Point Location { get; set; } = null!;
     public ICollection<MenuItem> Menu { get; set; } = new List<MenuItem>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
+
+    /// <summary>Claves de <see cref="CafeTags"/> (wifi, terraza, enchufes…).</summary>
+    public List<string> Tags { get; set; } = new();
+
+    public ICollection<CafePhoto> Photos { get; set; } = new List<CafePhoto>();
 }

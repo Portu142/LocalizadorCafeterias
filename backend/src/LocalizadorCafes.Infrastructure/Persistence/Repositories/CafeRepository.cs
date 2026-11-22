@@ -53,7 +53,11 @@ public class CafeRepository : ICafeRepository
     {
         return await _dbContext.Cafes
             .AsNoTracking()
+            // Tres colecciones (menú, fotos y reseñas): consultas separadas evitan
+            // el producto cartesiano de filas de un único JOIN.
+            .AsSplitQuery()
             .Include(cafe => cafe.Menu)
+            .Include(cafe => cafe.Photos)
             .Include(cafe => cafe.Reviews)
                 .ThenInclude(review => review.MenuItemRatings)
             .FirstOrDefaultAsync(cafe => cafe.Id == id, cancellationToken);

@@ -154,6 +154,40 @@ public class CafeServiceTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task GetByIdAsync_ShouldMapKnownTagsAndPhotos()
+    {
+        var cafe = CreateCafe();
+        cafe.Tags = new List<string> { CafeTags.Wifi, "desconocida", CafeTags.Wifi, CafeTags.Terrace };
+        cafe.Photos.Add(new CafePhoto
+        {
+            Url = "https://example.org/foto.jpg",
+            Author = "Autora",
+            License = "CC BY 4.0",
+            SourceUrl = "https://example.org/foto"
+        });
+
+        var repository = new Mock<ICafeRepository>();
+        repository
+            .Setup(x => x.GetByIdAsync(cafe.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cafe);
+
+        var service = new CafeService(repository.Object);
+
+        var result = await service.GetByIdAsync(cafe.Id);
+
+        result.Should().NotBeNull();
+        result!.Tags.Should().Equal(CafeTags.Wifi, CafeTags.Terrace);
+        result.Photos.Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new
+            {
+                Url = "https://example.org/foto.jpg",
+                Author = "Autora",
+                License = "CC BY 4.0",
+                SourceUrl = "https://example.org/foto"
+            });
+    }
+
     private static Cafe CreateCafe()
     {
         var cafe = new Cafe

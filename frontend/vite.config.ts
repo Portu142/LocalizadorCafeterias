@@ -7,6 +7,7 @@ const DEFAULT_SITE_URL = 'https://example.github.io/localizador-cafes/';
 
 /** Hosts que el frontend consulta directamente en el modo demo (sin API). */
 const OSM_CONNECT_SRC = [
+  'https://api.openstreetmap.org',
   'https://photon.komoot.io',
   'https://overpass-api.de',
   'https://overpass.kumi.systems',
@@ -26,7 +27,8 @@ function contentSecurityPolicy(apiOrigin: string | null) {
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
-    "img-src 'self' data: blob: https://tile.openstreetmap.org",
+    // Fotos: solo Wikimedia Commons (Special:FilePath redirige a sus miniaturas).
+    "img-src 'self' data: blob: https://tile.openstreetmap.org https://commons.wikimedia.org https://upload.wikimedia.org https://thumb.wikimedia.org",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",

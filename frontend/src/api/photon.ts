@@ -115,6 +115,9 @@ function toCafe(feature: PhotonFeature): CafeDetail | null {
     neighborhood,
     phone: '',
     hours: '',
+    // Photon no devuelve etiquetas: se completan con Overpass al abrir la ficha.
+    tags: [],
+    photos: [],
     // GeoJSON guarda [longitud, latitud].
     latitude: coordinates[1],
     longitude: coordinates[0],
@@ -178,7 +181,7 @@ export async function queryPhotonCafes(
   }
 
   for (const cafe of nearest) {
-    storeCafeDetails(cafe);
+    storeCafeDetails(cafe, false);
   }
 
   return nearest;

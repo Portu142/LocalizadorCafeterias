@@ -1,6 +1,7 @@
 import type { Coordinates } from '../lib/geo';
 import type { CafeDetail } from '../types/cafe';
-import { getCachedCafe, storeCafeDetails } from './osmCache';
+import { getCachedCafe, isCompleteInCache, storeCafeDetails } from './osmCache';
+import { photosFromOsm, tagsFromOsm } from './osmTags';
 
 /** Endpoints públicos de Overpass API (OpenStreetMap), con respaldo. */
 const ENDPOINTS = [
@@ -11,6 +12,9 @@ const ENDPOINTS = [
 
 /** Espera máxima por endpoint antes de pasar al siguiente respaldo. */
 const REQUEST_TIMEOUT_MS = 15_000;
+
+/** Espera máxima para completar con Overpass una ficha que ya llegó de Photon. */
+const ENRICH_TIMEOUT_MS = 4_000;
 
 const RADIUS_KM = 5;
 const MAX_RESULTS = 60;
@@ -41,12 +45,21 @@ function buildByIdQuery(type: 'node' | 'way' | 'relation', id: string): string {
   return `[out:json][timeout:25];${type}(${id});out center;`;
 }
 
-async function queryOverpass(query: string): Promise<OverpassElement[]> {
+type QueryOptions = {
+  timeoutMs?: number;
+  /** Cuántos endpoints de respaldo probar (por defecto, todos). */
+  maxEndpoints?: number;
+};
+
+async function queryOverpass(
+  query: string,
+  { timeoutMs = REQUEST_TIMEOUT_MS, maxEndpoints = ENDPOINTS.length }: QueryOptions = {},
+): Promise<OverpassElement[]> {
   let lastError: unknown = null;
 
-  for (const endpoint of ENDPOINTS) {
+  for (const endpoint of ENDPOINTS.slice(0, maxEndpoints)) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(endpoint, {
@@ -119,6 +132,8 @@ function toCafeDetail(element: OverpassElement): CafeDetail | null {
     neighborhood,
     phone: tags.phone ?? tags['contact:phone'] ?? '',
     hours: tags.opening_hours ?? '',
+    tags: tagsFromOsm(tags),
+    photos: photosFromOsm(tags),
     latitude: coordinates.latitude,
     longitude: coordinates.longitude,
     rating: 0,
@@ -152,16 +167,46 @@ export async function queryOverpassNearby(
     .slice(0, MAX_RESULTS);
 
   for (const cafe of cafes) {
-    storeCafeDetails(cafe);
+    storeCafeDetails(cafe, true);
   }
 
   return cafes;
 }
 
+const OSM_API = 'https://api.openstreetmap.org/api/0.6';
+
+/** Etiquetas de un único elemento desde la API oficial de OSM (uso ligero:
+ *  una petición al abrir la ficha). Devuelve `null` si falla o tarda. */
+async function fetchElementTags(
+  type: 'node' | 'way' | 'relation',
+  id: string,
+): Promise<Record<string, string> | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ENRICH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${OSM_API}/${type}/${id}.json`, {
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as {
+      elements?: { tags?: Record<string, string> }[];
+    };
+    return payload.elements?.[0]?.tags ?? null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Detalle de un café de OpenStreetMap por id (`osm-node/123`), desde caché o Overpass. */
 export async function queryCafeById(id: string): Promise<CafeDetail | null> {
   const cached = getCachedCafe(id);
-  if (cached) {
+  if (cached && isCompleteInCache(id)) {
     return cached;
   }
 
@@ -184,12 +229,44 @@ export async function queryCafeById(id: string): Promise<CafeDetail | null> {
     return null;
   }
 
-  const elements = await queryOverpass(buildByIdQuery(normalizedType, match[2]));
+  // Ficha de Photon (sin etiquetas): se completa con la API oficial de OSM,
+  // que devuelve un solo elemento en milisegundos y no depende de Overpass.
+  if (cached) {
+    const tags = await fetchElementTags(normalizedType, match[2]);
+    if (tags) {
+      const enriched: CafeDetail = {
+        ...cached,
+        phone: cached.phone || tags.phone || tags['contact:phone'] || '',
+        hours: cached.hours || tags.opening_hours || '',
+        tags: tagsFromOsm(tags),
+        photos: photosFromOsm(tags),
+      };
+      storeCafeDetails(enriched, true);
+      return enriched;
+    }
+  }
+
+  // Si ya tenemos la ficha de Photon, completar servicios y fotos es un
+  // extra: se limita a unos segundos y, si falla, se muestra lo que hay.
+  let elements: OverpassElement[];
+  try {
+    elements = await queryOverpass(
+      buildByIdQuery(normalizedType, match[2]),
+      cached ? { timeoutMs: ENRICH_TIMEOUT_MS, maxEndpoints: 1 } : {},
+    );
+  } catch (error) {
+    if (cached) {
+      return cached;
+    }
+    throw error;
+  }
+
   const cafe = elements.map(toCafeDetail).find((item): item is CafeDetail => item !== null);
 
   if (cafe) {
-    storeCafeDetails(cafe);
+    storeCafeDetails(cafe, true);
+    return cafe;
   }
 
-  return cafe ?? null;
+  return cached ?? null;
 }

@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<MenuItem> MenuItems => Set<MenuItem>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<MenuItemRating> MenuItemRatings => Set<MenuItemRating>();
+    public DbSet<CafePhoto> CafePhotos => Set<CafePhoto>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

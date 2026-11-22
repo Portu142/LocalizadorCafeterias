@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent } from 'react';
 import {
   AlertCircle,
   Clock,
+  Camera,
   ExternalLink,
   Heart,
   MapPin,
@@ -13,6 +14,8 @@ import {
 import { formatDistance } from '../lib/geo';
 import { cn, formatDate, formatPrice, initials } from '../lib/utils';
 import type { CafeDetail as CafeDetailData } from '../types/cafe';
+import { CafePhotos } from './CafePhotos';
+import { CafeTagList } from './CafeTagList';
 import { ReviewForm } from './ReviewForm';
 import { StarRating } from './StarRating';
 
@@ -109,6 +112,10 @@ export function CafeDetail({
         .replace(/^R\//i, 'relation/')}`
     : null;
   const hasMenu = cafe.menu.length > 0;
+  const photos = cafe.photos ?? [];
+  const photosUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    `${cafe.name} ${cafe.address}`,
+  )}`;
   const phoneDigits = cafe.phone.replace(/[^0-9+]/g, '');
   const phoneHref = phoneDigits.length >= 6 ? `tel:${phoneDigits}` : null;
 
@@ -139,6 +146,8 @@ export function CafeDetail({
   return (
     <section className="card flex h-full flex-col overflow-hidden">
       <div className="border-b border-coffee-100 p-5">
+        <CafePhotos cafeName={cafe.name} photos={photos} />
+
         <div className="flex items-start justify-between gap-3">
           <div>
             {cafe.neighborhood && (
@@ -172,6 +181,7 @@ export function CafeDetail({
                 </span>
               </div>
             )}
+            <CafeTagList tags={cafe.tags} />
           </div>
 
           <button
@@ -230,15 +240,30 @@ export function CafeDetail({
           )}
         </div>
 
-        <a
-          href={mapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1.5 py-1 text-xs font-semibold text-caramel-600 transition hover:text-caramel-700"
-        >
-          Cómo llegar <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-          <span className="sr-only">(Google Maps, se abre en una pestaña nueva)</span>
-        </a>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 py-1 text-xs font-semibold text-caramel-600 transition hover:text-caramel-700"
+          >
+            Cómo llegar <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="sr-only">(Google Maps, se abre en una pestaña nueva)</span>
+          </a>
+          {/* Sin fotos con licencia libre: se enlaza a las del local en Google. */}
+          {photos.length === 0 && (
+            <a
+              href={photosUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 py-1 text-xs font-semibold text-caramel-600 transition hover:text-caramel-700"
+            >
+              <Camera className="h-3.5 w-3.5" aria-hidden="true" />
+              Ver fotos del local
+              <span className="sr-only">(Google Maps, se abre en una pestaña nueva)</span>
+            </a>
+          )}
+        </div>
       </div>
 
       <div

@@ -11,5 +11,7 @@ public record CafeDetailDto(
     int ReviewCount,
     double Latitude,
     double Longitude,
+    IReadOnlyList<string> Tags,
+    IReadOnlyList<CafePhotoDto> Photos,
     IReadOnlyList<MenuItemDto> Menu,
     IReadOnlyList<ReviewDto> Reviews);

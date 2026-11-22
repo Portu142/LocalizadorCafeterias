@@ -15,10 +15,11 @@ export function DemoNotice() {
           Cafeterías reales de OpenStreetMap
         </p>
         <p className="mt-0.5 text-xs leading-5 text-coffee-600">
-          Los datos se consultan en vivo según tu ubicación. OpenStreetMap no
-          publica cartas, así que el menú aparece vacío; en la ficha tienes el
-          enlace a OpenStreetMap y a Google Maps para consultar la información
-          real del local.
+          Los datos se consultan en vivo según tu ubicación. Servicios (wifi,
+          terraza…) y fotos aparecen cuando el local los tiene registrados en
+          OpenStreetMap; las cartas no se publican allí, así que el menú
+          aparece vacío. En la ficha tienes enlaces a OpenStreetMap y Google
+          Maps para consultar la información real del local.
         </p>
       </div>
     </div>

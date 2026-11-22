@@ -76,6 +76,23 @@ public class InMemoryCafeRepositoryTests
         cafes.Should().OnlyContain(cafe => cafe.Menu.Count == 4);
     }
 
+    [Fact]
+    public void DemoData_ShouldUseKnownTagsAndAttributedPhotos()
+    {
+        var cafes = DemoData.CreateCafes();
+
+        cafes.Should().OnlyContain(cafe => cafe.Tags.Count > 0);
+        cafes.SelectMany(cafe => cafe.Tags).Should().OnlyContain(tag => CafeTags.All.Contains(tag));
+
+        var photos = cafes.SelectMany(cafe => cafe.Photos).ToList();
+        photos.Should().NotBeEmpty();
+        photos.Should().OnlyContain(photo =>
+            photo.Url.StartsWith("https://") &&
+            photo.SourceUrl.StartsWith("https://") &&
+            photo.Author.Length > 0 &&
+            photo.License.Length > 0);
+    }
+
     private static InMemoryCafeRepository CreateRepository() =>
         new(DemoData.CreateCafes());
 }
