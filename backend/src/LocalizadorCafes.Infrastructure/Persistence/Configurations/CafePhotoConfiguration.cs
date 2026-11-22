@@ -1,3 +1,4 @@
+using LocalizadorCafes.Infrastructure.Identity;
 using LocalizadorCafes.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -29,5 +30,10 @@ public class CafePhotoConfiguration : IEntityTypeConfiguration<CafePhoto>
             .IsRequired();
 
         builder.HasIndex(photo => photo.CafeId);
+
+        builder.HasOne<AppUser>()
+            .WithMany()
+            .HasForeignKey(photo => photo.UploadedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

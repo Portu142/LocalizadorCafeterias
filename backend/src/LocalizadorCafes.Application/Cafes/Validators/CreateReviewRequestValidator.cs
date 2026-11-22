@@ -7,11 +7,6 @@ public class CreateReviewRequestValidator : AbstractValidator<CreateReviewReques
 {
     public CreateReviewRequestValidator()
     {
-        RuleFor(x => x.Author)
-            .NotEmpty().WithMessage("El nombre es obligatorio.")
-            .MinimumLength(2).WithMessage("El nombre debe tener al menos 2 caracteres.")
-            .MaximumLength(80).WithMessage("El nombre no puede superar los 80 caracteres.");
-
         RuleFor(x => x.Rating)
             .InclusiveBetween(1, 5).WithMessage("La puntuación debe estar entre 1 y 5.");
 

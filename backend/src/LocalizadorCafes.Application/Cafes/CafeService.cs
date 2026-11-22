@@ -9,10 +9,12 @@ namespace LocalizadorCafes.Application.Cafes;
 public class CafeService
 {
     private readonly ICafeRepository _cafeRepository;
+    private readonly IPhotoStorage _photoStorage;
 
-    public CafeService(ICafeRepository cafeRepository)
+    public CafeService(ICafeRepository cafeRepository, IPhotoStorage photoStorage)
     {
         _cafeRepository = cafeRepository;
+        _photoStorage = photoStorage;
     }
 
     public async Task<IReadOnlyList<CafeSummaryDto>> SearchAsync(
@@ -41,6 +43,7 @@ public class CafeService
     public async Task<ReviewDto?> AddReviewAsync(
         Guid cafeId,
         CreateReviewRequest request,
+        ReviewAuthor author,
         CancellationToken cancellationToken = default)
     {
         var cafe = await _cafeRepository.GetByIdAsync(cafeId, cancellationToken);
@@ -65,7 +68,8 @@ public class CafeService
         var review = new Review
         {
             CafeId = cafeId,
-            Author = request.Author.Trim(),
+            UserId = author.UserId,
+            Author = author.DisplayName.Trim(),
             Rating = request.Rating,
             Comment = request.Comment.Trim(),
             MenuItemRatings = itemRatings
@@ -81,6 +85,80 @@ public class CafeService
         return ToReviewDto(review, menuNames);
     }
 
+    public async Task<IReadOnlyList<UserReviewDto>> GetUserReviewsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var reviews = await _cafeRepository.GetReviewsByUserAsync(userId, cancellationToken);
+
+        return reviews
+            .Select(item => new UserReviewDto(
+                item.Review.Id,
+                item.Cafe.Id,
+                item.Cafe.Name,
+                item.Review.Rating,
+                item.Review.Comment,
+                item.Review.CreatedAt))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Guarda una foto subida por un usuario. Devuelve null si la cafetería no
+    /// existe y lanza <see cref="ValidationException"/> si el archivo no es una
+    /// imagen JPEG, PNG o WebP de hasta 5 MB.
+    /// </summary>
+    public async Task<CafePhotoDto?> AddPhotoAsync(
+        Guid cafeId,
+        Stream content,
+        long length,
+        ReviewAuthor uploader,
+        CancellationToken cancellationToken = default)
+    {
+        if (length <= 0 || length > PhotoFormat.MaxBytes)
+        {
+            throw PhotoError("La foto debe pesar como máximo 5 MB.");
+        }
+
+        var cafe = await _cafeRepository.GetByIdAsync(cafeId, cancellationToken);
+        if (cafe is null)
+        {
+            return null;
+        }
+
+        // Se copia a memoria (máx. 5 MB) para leer la firma y guardar el mismo
+        // contenido que se ha validado.
+        using var buffer = new MemoryStream();
+        await content.CopyToAsync(buffer, cancellationToken);
+
+        if (buffer.Length > PhotoFormat.MaxBytes)
+        {
+            throw PhotoError("La foto debe pesar como máximo 5 MB.");
+        }
+
+        var extension = PhotoFormat.DetectExtension(buffer)
+            ?? throw PhotoError("Solo se admiten fotos JPEG, PNG o WebP.");
+
+        buffer.Position = 0;
+        var url = await _photoStorage.SaveAsync(buffer, extension, cancellationToken);
+
+        var photo = new CafePhoto
+        {
+            CafeId = cafeId,
+            Url = url,
+            Author = uploader.DisplayName.Trim(),
+            License = "Foto de la comunidad",
+            SourceUrl = string.Empty,
+            UploadedByUserId = uploader.UserId
+        };
+
+        await _cafeRepository.AddPhotoAsync(photo, cancellationToken);
+
+        return new CafePhotoDto(photo.Id, photo.Url, photo.Author, photo.License, photo.SourceUrl);
+    }
+
+    private static ValidationException PhotoError(string message) =>
+        new(new[] { new ValidationFailure("photo", message) });
+
     private static CafeSummaryDto ToSummary(Cafe cafe)
     {
         var reviews = cafe.Reviews.ToList();
@@ -94,8 +172,13 @@ public class CafeService
             rating,
             reviews.Count,
             cafe.Location.Y,
-            cafe.Location.X);
+            cafe.Location.X,
+            KnownTags(cafe),
+            cafe.Hours);
     }
+
+    private static List<string> KnownTags(Cafe cafe) =>
+        cafe.Tags.Where(CafeTags.All.Contains).Distinct().ToList();
 
     private static CafeDetailDto ToDetail(Cafe cafe)
     {
@@ -115,10 +198,7 @@ public class CafeService
             reviews.Count,
             cafe.Location.Y,
             cafe.Location.X,
-            cafe.Tags
-                .Where(CafeTags.All.Contains)
-                .Distinct()
-                .ToList(),
+            KnownTags(cafe),
             cafe.Photos
                 .OrderBy(photo => photo.CreatedAt)
                 .Select(photo => new CafePhotoDto(

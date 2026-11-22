@@ -79,6 +79,38 @@ public sealed class InMemoryCafeRepository : ICafeRepository
         }
     }
 
+    public Task AddPhotoAsync(CafePhoto photo, CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            var cafe = _cafes.FirstOrDefault(item => item.Id == photo.CafeId);
+            if (cafe is not null)
+            {
+                photo.Cafe = cafe;
+                cafe.Photos.Add(photo);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task<IReadOnlyList<(Review Review, Cafe Cafe)>> GetReviewsByUserAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            IReadOnlyList<(Review Review, Cafe Cafe)> result = _cafes
+                .SelectMany(cafe => cafe.Reviews
+                    .Where(review => review.UserId == userId)
+                    .Select(review => (review, cafe)))
+                .OrderByDescending(item => item.review.CreatedAt)
+                .ToList();
+
+            return Task.FromResult(result);
+        }
+    }
+
     private static bool Contains(string value, string term) =>
         value.Contains(term, StringComparison.OrdinalIgnoreCase);
 

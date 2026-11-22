@@ -28,7 +28,8 @@ function contentSecurityPolicy(apiOrigin: string | null) {
     "form-action 'self'",
     "object-src 'none'",
     // Fotos: solo Wikimedia Commons (Special:FilePath redirige a sus miniaturas).
-    "img-src 'self' data: blob: https://tile.openstreetmap.org https://commons.wikimedia.org https://upload.wikimedia.org https://thumb.wikimedia.org",
+    // Fotos de la comunidad: las sirve la API (/api/photos/…).
+    `img-src 'self' data: blob: https://tile.openstreetmap.org https://commons.wikimedia.org https://upload.wikimedia.org https://thumb.wikimedia.org${apiOrigin ? ` ${apiOrigin}` : ''}`,
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",

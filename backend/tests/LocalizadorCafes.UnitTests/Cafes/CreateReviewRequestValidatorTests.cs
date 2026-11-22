@@ -35,32 +35,14 @@ public class CreateReviewRequestValidatorTests
     }
 
     [Theory]
+    [InlineData(null)]
     [InlineData("")]
-    [InlineData("   ")]
-    public void Validate_ShouldFail_WhenAuthorIsEmpty(string author)
+    public void Validate_ShouldIgnoreAuthor_BecauseItComesFromTheAccount(string? author)
     {
         var result = _validator.TestValidate(
             new CreateReviewRequest(author, 5, "Un café excelente."));
 
-        result.ShouldHaveValidationErrorFor(request => request.Author);
-    }
-
-    [Fact]
-    public void Validate_ShouldFail_WhenAuthorIsTooLong()
-    {
-        var result = _validator.TestValidate(
-            new CreateReviewRequest(new string('a', 81), 5, "Un café excelente."));
-
-        result.ShouldHaveValidationErrorFor(request => request.Author);
-    }
-
-    [Fact]
-    public void Validate_ShouldFail_WhenAuthorIsTooShort()
-    {
-        var result = _validator.TestValidate(
-            new CreateReviewRequest("A", 5, "Un café excelente."));
-
-        result.ShouldHaveValidationErrorFor(request => request.Author);
+        result.ShouldNotHaveAnyValidationErrors();
     }
 
     [Theory]

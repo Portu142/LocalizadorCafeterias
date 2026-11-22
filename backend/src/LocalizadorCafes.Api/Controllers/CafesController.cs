@@ -1,6 +1,9 @@
 using FluentValidation;
 using LocalizadorCafes.Application.Cafes;
 using LocalizadorCafes.Application.Cafes.Dtos;
+using LocalizadorCafes.Infrastructure.Identity;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -11,10 +14,12 @@ namespace LocalizadorCafes.Api.Controllers;
 public class CafesController : ControllerBase
 {
     private readonly CafeService _cafeService;
+    private readonly UserManager<AppUser> _userManager;
 
-    public CafesController(CafeService cafeService)
+    public CafesController(CafeService cafeService, UserManager<AppUser> userManager)
     {
         _cafeService = cafeService;
+        _userManager = userManager;
     }
 
     /// <summary>
@@ -93,12 +98,15 @@ public class CafesController : ControllerBase
     }
 
     /// <summary>
-    /// Añade una reseña a una cafetería.
+    /// Añade una reseña a una cafetería. Requiere sesión: el autor es el
+    /// nombre de la cuenta.
     /// </summary>
+    [Authorize]
     [HttpPost("{id:guid}/reviews")]
     [EnableRateLimiting("reviews")]
     [ProducesResponseType(typeof(ReviewDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ReviewDto>> AddReview(
@@ -113,12 +121,64 @@ public class CafesController : ControllerBase
             throw new ValidationException(validationResult.Errors);
         }
 
-        var review = await _cafeService.AddReviewAsync(id, request, cancellationToken);
+        var author = await CurrentAuthorAsync();
+        if (author is null)
+        {
+            return Unauthorized();
+        }
+
+        var review = await _cafeService.AddReviewAsync(id, request, author, cancellationToken);
         if (review is null)
         {
             return NotFound();
         }
 
         return CreatedAtAction(nameof(GetById), new { id }, review);
+    }
+
+    /// <summary>
+    /// Sube una foto de la cafetería (JPEG, PNG o WebP, máx. 5 MB). Requiere sesión.
+    /// </summary>
+    [Authorize]
+    [HttpPost("{id:guid}/photos")]
+    [EnableRateLimiting("uploads")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(CafePhotoDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CafePhotoDto>> AddPhoto(
+        Guid id,
+        IFormFile? photo,
+        CancellationToken cancellationToken)
+    {
+        if (photo is null)
+        {
+            throw new ValidationException(new[]
+            {
+                new FluentValidation.Results.ValidationFailure("photo", "Selecciona una foto para subir.")
+            });
+        }
+
+        var author = await CurrentAuthorAsync();
+        if (author is null)
+        {
+            return Unauthorized();
+        }
+
+        await using var stream = photo.OpenReadStream();
+        var result = await _cafeService.AddPhotoAsync(id, stream, photo.Length, author, cancellationToken);
+
+        return result is null
+            ? NotFound()
+            : CreatedAtAction(nameof(GetById), new { id }, result);
+    }
+
+    private async Task<ReviewAuthor?> CurrentAuthorAsync()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        return user is null ? null : new ReviewAuthor(user.Id, user.DisplayName);
     }
 }

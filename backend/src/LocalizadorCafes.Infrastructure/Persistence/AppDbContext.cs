@@ -1,9 +1,12 @@
 using LocalizadorCafes.Domain.Entities;
+using LocalizadorCafes.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace LocalizadorCafes.Infrastructure.Persistence;
 
-public class AppDbContext : DbContext
+public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
@@ -17,7 +20,15 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        // Primero el modelo de Identity (tablas AspNet*) y después el nuestro.
         base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        modelBuilder.Entity<AppUser>(user =>
+        {
+            user.Property(item => item.DisplayName)
+                .HasMaxLength(40)
+                .IsRequired();
+        });
     }
 }

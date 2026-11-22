@@ -1,7 +1,7 @@
 import type { Coordinates } from '../lib/geo';
 import type { CafeDetail } from '../types/cafe';
 import { getCachedCafe, isCompleteInCache, storeCafeDetails } from './osmCache';
-import { photosFromOsm, tagsFromOsm } from './osmTags';
+import { detailsFromOsmTags } from './osmTags';
 
 /** Endpoints públicos de Overpass API (OpenStreetMap), con respaldo. */
 const ENDPOINTS = [
@@ -130,10 +130,7 @@ function toCafeDetail(element: OverpassElement): CafeDetail | null {
     name,
     address,
     neighborhood,
-    phone: tags.phone ?? tags['contact:phone'] ?? '',
-    hours: tags.opening_hours ?? '',
-    tags: tagsFromOsm(tags),
-    photos: photosFromOsm(tags),
+    ...detailsFromOsmTags(tags),
     latitude: coordinates.latitude,
     longitude: coordinates.longitude,
     rating: 0,
@@ -203,6 +200,82 @@ async function fetchElementTags(
   }
 }
 
+function mergeOsmTags(cafe: CafeDetail, tags: Record<string, string>): CafeDetail {
+  const details = detailsFromOsmTags(tags);
+
+  return {
+    ...cafe,
+    ...details,
+    phone: cafe.phone || details.phone,
+    hours: cafe.hours || details.hours,
+  };
+}
+
+/** Tipo e id numérico de un id `osm-node/123`; null si no es un nodo o vía. */
+function parseNodeOrWayId(id: string): { type: 'node' | 'way'; ref: string } | null {
+  const [prefix, ref] = id.split('/');
+  const type = prefix === 'osm-node' ? 'node' : prefix === 'osm-way' ? 'way' : null;
+
+  return type && ref && /^\d+$/.test(ref) ? { type, ref } : null;
+}
+
+/**
+ * Completa con sus etiquetas de OSM (servicios, horario, web…) una lista de
+ * cafés que llegó de Photon. Usa la descarga múltiple de la API oficial: una
+ * petición por tipo de elemento para toda la lista. Si falla, devuelve la
+ * lista tal cual y cada ficha se completará al abrirla.
+ */
+export async function enrichWithOsmTags(cafes: CafeDetail[]): Promise<CafeDetail[]> {
+  const idsByType = new Map<'node' | 'way', string[]>();
+
+  for (const cafe of cafes) {
+    const parsed = isCompleteInCache(cafe.id) ? null : parseNodeOrWayId(cafe.id);
+    if (parsed) {
+      idsByType.set(parsed.type, [...(idsByType.get(parsed.type) ?? []), parsed.ref]);
+    }
+  }
+
+  const tagsById = new Map<string, Record<string, string>>();
+
+  await Promise.all(
+    [...idsByType].map(async ([type, ids]) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), ENRICH_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(`${OSM_API}/${type}s.json?${type}s=${ids.join(',')}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as {
+          elements?: { type: string; id: number; tags?: Record<string, string> }[];
+        };
+        for (const element of payload.elements ?? []) {
+          tagsById.set(`osm-${element.type}/${element.id}`, element.tags ?? {});
+        }
+      } catch {
+        // Sin datos extra: la lista se muestra igual.
+      } finally {
+        clearTimeout(timer);
+      }
+    }),
+  );
+
+  return cafes.map((cafe) => {
+    const tags = tagsById.get(cafe.id);
+    if (!tags) {
+      return getCachedCafe(cafe.id) ?? cafe;
+    }
+
+    const enriched = mergeOsmTags(cafe, tags);
+    storeCafeDetails(enriched, true);
+    return enriched;
+  });
+}
+
 /** Detalle de un café de OpenStreetMap por id (`osm-node/123`), desde caché o Overpass. */
 export async function queryCafeById(id: string): Promise<CafeDetail | null> {
   const cached = getCachedCafe(id);
@@ -234,13 +307,7 @@ export async function queryCafeById(id: string): Promise<CafeDetail | null> {
   if (cached) {
     const tags = await fetchElementTags(normalizedType, match[2]);
     if (tags) {
-      const enriched: CafeDetail = {
-        ...cached,
-        phone: cached.phone || tags.phone || tags['contact:phone'] || '',
-        hours: cached.hours || tags.opening_hours || '',
-        tags: tagsFromOsm(tags),
-        photos: photosFromOsm(tags),
-      };
+      const enriched = mergeOsmTags(cached, tags);
       storeCafeDetails(enriched, true);
       return enriched;
     }

@@ -1,5 +1,7 @@
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
+import { AuthDialog, type AuthMode } from './components/AuthDialog';
 import { CafeDetail } from './components/CafeDetail';
+import { MyReviewsDialog } from './components/MyReviewsDialog';
 import { CafeList } from './components/CafeList';
 import { DemoNotice } from './components/DemoNotice';
 import { Footer } from './components/Footer';
@@ -8,12 +10,14 @@ import { Hero } from './components/Hero';
 import { LocationFilter } from './components/LocationFilter';
 import { LocationBanner } from './components/LocationBanner';
 import { NeighborhoodFilter } from './components/NeighborhoodFilter';
+import { ServiceFilters, type ServiceFilter } from './components/ServiceFilters';
 import { IS_DEMO_MODE } from './config';
 import { useCafe } from './hooks/useCafe';
 import { useCafes } from './hooks/useCafes';
 import { useFavorites } from './hooks/useFavorites';
 import { useGeolocation } from './hooks/useGeolocation';
 import { DEFAULT_LOCATION, distanceKm } from './lib/geo';
+import { isOpenAt } from './lib/openingHours';
 
 const MapView = lazy(() =>
   import('./components/MapView').then((module) => ({ default: module.MapView })),
@@ -54,7 +58,12 @@ function App() {
   const [search, setSearch] = useState('');
   const [neighborhood, setNeighborhood] = useState(ALL_NEIGHBORHOODS);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [serviceFilters, setServiceFilters] = useState<ReadonlySet<ServiceFilter>>(
+    () => new Set(),
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
+  const [myReviewsOpen, setMyReviewsOpen] = useState(false);
   const detailRef = useRef<HTMLDivElement>(null);
 
   const neighborhoods = useMemo(() => {
@@ -109,6 +118,14 @@ function App() {
         return false;
       }
 
+      // Filtros combinables: el café debe cumplirlos todos. Sin dato (horario
+      // desconocido, servicio no registrado) se considera que no lo cumple.
+      for (const filter of serviceFilters) {
+        if (filter === 'abierto' ? isOpenAt(cafe.hours) !== true : !cafe.tags?.includes(filter)) {
+          return false;
+        }
+      }
+
       if (!term) {
         return true;
       }
@@ -138,7 +155,16 @@ function App() {
     // Sin ubicación del usuario, se muestra la lista completa (ya cargada
     // desde la ubicación predeterminada) sin radio de cercanía.
     return matches;
-  }, [cafes, distances, favoriteCafes, neighborhood, search, showFavorites, userCoordinates]);
+  }, [
+    cafes,
+    distances,
+    favoriteCafes,
+    neighborhood,
+    search,
+    serviceFilters,
+    showFavorites,
+    userCoordinates,
+  ]);
 
   const effectiveSelectedId = useMemo(() => {
     if (selectedId && filteredCafes.some((cafe) => cafe.id === selectedId)) {
@@ -194,7 +220,19 @@ function App() {
     locationActive &&
     !showFavorites &&
     !search.trim() &&
+    serviceFilters.size === 0 &&
     neighborhood === ALL_NEIGHBORHOODS;
+
+  const toggleServiceFilter = (filter: ServiceFilter) =>
+    setServiceFilters((current) => {
+      const next = new Set(current);
+      if (next.has(filter)) {
+        next.delete(filter);
+      } else {
+        next.add(filter);
+      }
+      return next;
+    });
 
   // Solo se desactiva la ubicación cuando es ella la que deja la lista vacía:
   // borrar una búsqueda no debe hacerte perder «Cerca de mí».
@@ -202,6 +240,7 @@ function App() {
     setSearch('');
     setNeighborhood(ALL_NEIGHBORHOODS);
     setShowFavorites(false);
+    setServiceFilters(new Set());
 
     if (locationCausedEmpty) {
       geo.clear();
@@ -238,7 +277,10 @@ function App() {
         Saltar al contenido principal
       </a>
 
-      <Header />
+      <Header
+        onLogin={() => setAuthMode('login')}
+        onMyReviews={() => setMyReviewsOpen(true)}
+      />
       <Hero
         search={search}
         onSearchChange={setSearch}
@@ -276,6 +318,12 @@ function App() {
             />
           </div>
         </div>
+
+        <ServiceFilters
+          active={serviceFilters}
+          onToggle={toggleServiceFilter}
+          onClear={() => setServiceFilters(new Set())}
+        />
 
         {!locationActive && !isLocating && (
           <LocationBanner
@@ -328,9 +376,11 @@ function App() {
                   ? 'Pulsa el corazón de una cafetería para guardarla aquí.'
                   : locationCausedEmpty
                     ? `No hay ninguna a menos de ${RADIUS_KM} km. Desactiva “Cerca de mí” para ver todas.`
-                    : locationActive
-                      ? 'Prueba con otro barrio, borra la búsqueda o quita “Cerca de mí”.'
-                      : 'Prueba con otro barrio o borra la búsqueda.'
+                    : serviceFilters.size > 0
+                      ? 'Solo aparecen las cafeterías que tienen ese horario o servicio registrado. Prueba a quitar algún filtro.'
+                      : locationActive
+                        ? 'Prueba con otro barrio, borra la búsqueda o quita “Cerca de mí”.'
+                        : 'Prueba con otro barrio o borra la búsqueda.'
               }
               onSelect={handleSelect}
               onToggleFavorite={toggleFavorite}
@@ -386,12 +436,20 @@ function App() {
                   toggleFavorite(selectedCafe);
                 }
               }}
+              onRequestLogin={() => setAuthMode('login')}
             />
           </div>
         </div>
       </main>
 
       <Footer />
+
+      <AuthDialog
+        mode={authMode}
+        onModeChange={setAuthMode}
+        onClose={() => setAuthMode(null)}
+      />
+      <MyReviewsDialog open={myReviewsOpen} onClose={() => setMyReviewsOpen(false)} />
     </div>
   );
 }

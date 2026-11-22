@@ -26,3 +26,6 @@ Thumbs.db
 # Herramientas
 frontend/node_modules/.tmp
 frontend/tsconfig.tsbuildinfo
+
+# Fotos subidas y claves de sesión de la API
+**/App_Data/

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { resolvePhotoUrl } from '../api/cafes';
 import type { CafePhoto } from '../types/cafe';
 
 type CafePhotosProps = {
@@ -35,7 +36,7 @@ export function CafePhotos({ cafeName, photos }: CafePhotosProps) {
         >
           <figure className="overflow-hidden rounded-2xl border border-coffee-100 bg-cream-100">
             <img
-              src={photo.url}
+              src={resolvePhotoUrl(photo.url)}
               alt={`Foto ${index + 1} de ${cafeName}`}
               loading="lazy"
               decoding="async"
@@ -47,15 +48,22 @@ export function CafePhotos({ cafeName, photos }: CafePhotosProps) {
               }
             />
             <figcaption className="truncate px-3 py-1.5 text-[11px] text-coffee-500">
-              <a
-                href={photo.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline-offset-2 hover:text-coffee-800 hover:underline"
-              >
-                Foto: {photo.author} · {photo.license}
-                <span className="sr-only"> (se abre en una pestaña nueva)</span>
-              </a>
+              {/* Las fotos de la comunidad no tienen página de origen. */}
+              {photo.sourceUrl ? (
+                <a
+                  href={photo.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline-offset-2 hover:text-coffee-800 hover:underline"
+                >
+                  Foto: {photo.author} · {photo.license}
+                  <span className="sr-only"> (se abre en una pestaña nueva)</span>
+                </a>
+              ) : (
+                <>
+                  Foto: {photo.author} · {photo.license}
+                </>
+              )}
             </figcaption>
           </figure>
         </li>

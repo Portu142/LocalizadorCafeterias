@@ -12,10 +12,13 @@ import {
   UtensilsCrossed,
 } from 'lucide-react';
 import { formatDistance } from '../lib/geo';
+import { isOpenAt } from '../lib/openingHours';
 import { cn, formatDate, formatPrice, initials } from '../lib/utils';
 import type { CafeDetail as CafeDetailData } from '../types/cafe';
 import { CafePhotos } from './CafePhotos';
 import { CafeTagList } from './CafeTagList';
+import { PhotoUpload } from './PhotoUpload';
+import { isApiCafe } from '../api/cafes';
 import { ReviewForm } from './ReviewForm';
 import { StarRating } from './StarRating';
 
@@ -27,6 +30,7 @@ type CafeDetailProps = {
   onRetry: () => void;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  onRequestLogin: () => void;
 };
 
 export function CafeDetail({
@@ -37,6 +41,7 @@ export function CafeDetail({
   onRetry,
   isFavorite,
   onToggleFavorite,
+  onRequestLogin,
 }: CafeDetailProps) {
   const [activeTab, setActiveTab] = useState<'menu' | 'reviews'>('menu');
 
@@ -113,7 +118,9 @@ export function CafeDetail({
     : null;
   const hasMenu = cafe.menu.length > 0;
   const photos = cafe.photos ?? [];
-  const photosUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+  const openNow = isOpenAt(cafe.hours);
+  // Google Maps abre la ficha del local, donde está la pestaña «Carta».
+  const menuSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     `${cafe.name} ${cafe.address}`,
   )}`;
   const phoneDigits = cafe.phone.replace(/[^0-9+]/g, '');
@@ -213,7 +220,19 @@ export function CafeDetail({
             <p className="flex items-center gap-2">
               <Clock className="h-4 w-4 shrink-0 text-caramel-500" aria-hidden="true" />
               <span className="sr-only">Horario: </span>
-              {cafe.hours}
+              <span>
+                {cafe.hours}
+                {openNow !== null && (
+                  <span
+                    className={cn(
+                      'ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                      openNow ? 'bg-emerald-50 text-emerald-800' : 'bg-cream-200 text-coffee-600',
+                    )}
+                  >
+                    {openNow ? 'Abierto ahora' : 'Cerrado ahora'}
+                  </span>
+                )}
+              </span>
             </p>
           )}
           {cafe.phone && (
@@ -250,10 +269,13 @@ export function CafeDetail({
             Cómo llegar <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="sr-only">(Google Maps, se abre en una pestaña nueva)</span>
           </a>
+          {isApiCafe(cafe.id) && (
+            <PhotoUpload key={cafe.id} cafeId={cafe.id} onRequestLogin={onRequestLogin} />
+          )}
           {/* Sin fotos con licencia libre: se enlaza a las del local en Google. */}
           {photos.length === 0 && (
             <a
-              href={photosUrl}
+              href={menuSearchUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 py-1 text-xs font-semibold text-caramel-600 transition hover:text-caramel-700"
@@ -360,13 +382,41 @@ export function CafeDetail({
                 aria-hidden="true"
               />
               <p className="mt-2 text-sm font-medium text-coffee-800">
-                Este café no tiene menú publicado
+                La carta no está publicada aquí
               </p>
               <p className="mt-1 text-xs leading-5 text-coffee-600">
-                Los datos de OpenStreetMap no incluyen cartas. Puedes consultar
-                horarios, ubicación y reseñas de la comunidad.
+                OpenStreetMap no guarda cartas y Google no permite copiarlas, así
+                que te llevamos a la carta del propio local.
               </p>
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                <a
+                  href={cafe.menuUrl ?? cafe.website ?? menuSearchUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary px-4 py-2 text-xs"
+                >
+                  {cafe.menuUrl
+                    ? 'Ver la carta'
+                    : cafe.website
+                      ? 'Ver la web del local'
+                      : 'Ver la carta en Google Maps'}
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="sr-only">(se abre en una pestaña nueva)</span>
+                </a>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+                {(cafe.menuUrl || cafe.website) && (
+                  <a
+                    href={menuSearchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 py-1 text-xs font-semibold text-caramel-600 hover:text-caramel-700"
+                  >
+                    Carta en Google Maps
+                    <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    <span className="sr-only">(se abre en una pestaña nueva)</span>
+                  </a>
+                )}
                 {osmUrl && (
                   <a
                     href={osmUrl}
@@ -452,7 +502,12 @@ export function CafeDetail({
 
           {/* key: al cambiar de cafetería se descarta lo escrito y cualquier
               error previo, para no publicar una reseña en el café equivocado. */}
-          <ReviewForm key={cafe.id} cafeId={cafe.id} menu={cafe.menu} />
+          <ReviewForm
+            key={cafe.id}
+            cafeId={cafe.id}
+            menu={cafe.menu}
+            onRequestLogin={onRequestLogin}
+          />
         </div>
       </div>
     </section>

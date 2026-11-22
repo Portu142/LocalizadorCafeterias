@@ -1,12 +1,15 @@
 import { API_URL, USE_API } from '../config';
 import type { Coordinates } from '../lib/geo';
 import { queryPhotonCafes } from './photon';
-import { queryCafeById, queryOverpassNearby } from './overpass';
+import { enrichWithOsmTags, queryCafeById, queryOverpassNearby } from './overpass';
 import type {
   CafeDetail,
+  CafePhoto,
   CafeSummary,
   CreateReviewRequest,
   Review,
+  User,
+  UserReview,
 } from '../types/cafe';
 
 const MOCK_REVIEWS_KEY = 'localizador_cafes_mock_reviews';
@@ -95,28 +98,57 @@ function toSummary(cafe: CafeDetail): CafeSummary {
     reviewCount: cafe.reviewCount,
     latitude: cafe.latitude,
     longitude: cafe.longitude,
+    tags: cafe.tags,
+    hours: cafe.hours,
   };
+}
+
+/** Error de la API con su código HTTP (p. ej. 401 = sin sesión). */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers = new Headers(options?.headers);
-  if (!headers.has('Content-Type')) {
+  // Con FormData el navegador pone el Content-Type con su «boundary».
+  if (!(options?.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
+    // La sesión viaja en una cookie HttpOnly de la API.
+    credentials: 'include',
   });
 
   if (!response.ok) {
     const problem = (await response.json().catch(() => null)) as
-      | { detail?: string; title?: string }
+      | { detail?: string; title?: string; errors?: Record<string, string[]> }
       | null;
+    const firstError = problem?.errors ? Object.values(problem.errors).flat()[0] : undefined;
 
-    throw new Error(
-      problem?.detail ?? problem?.title ?? 'No se pudo conectar con la API.',
+    throw new ApiError(
+      firstError ??
+        problem?.detail ??
+        problem?.title ??
+        (response.status === 401
+          ? 'Inicia sesión para continuar.'
+          : response.status === 429
+            ? 'Demasiados intentos. Espera un momento y vuelve a probar.'
+            : 'No se pudo conectar con la API.'),
+      response.status,
     );
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json() as Promise<T>;
@@ -138,11 +170,12 @@ async function queryOpenStreetMap(location: Coordinates): Promise<CafeDetail[]> 
     // Photon no respondió: se intenta directamente con Overpass.
   }
 
-  if (cafes.length === 0) {
-    cafes = await queryOverpassNearby(location);
+  if (cafes.length > 0) {
+    // Photon solo trae nombre y dirección: servicios y horario para los filtros.
+    return enrichWithOsmTags(cafes);
   }
 
-  return cafes;
+  return queryOverpassNearby(location);
 }
 
 export async function fetchCafesWithSource(
@@ -248,4 +281,71 @@ export async function createReview(
   saveStoredReviews(stored);
 
   return review;
+}
+
+// ---------------------------------------------------------------------------
+// Cuentas, fotos y «Mis reseñas» (solo con la API .NET).
+// ---------------------------------------------------------------------------
+
+/** Usuario con sesión iniciada, o `null` si no hay sesión o no hay API. */
+export async function fetchCurrentUser(): Promise<User | null> {
+  if (!USE_API) {
+    return null;
+  }
+
+  try {
+    return await request<User>('/api/auth/me');
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export function login(email: string, password: string): Promise<User> {
+  return request<User>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function register(
+  email: string,
+  password: string,
+  displayName: string,
+): Promise<User> {
+  return request<User>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, password, displayName }),
+  });
+}
+
+export function logout(): Promise<void> {
+  return request<void>('/api/auth/logout', { method: 'POST' });
+}
+
+export function fetchMyReviews(): Promise<UserReview[]> {
+  return request<UserReview[]>('/api/me/reviews');
+}
+
+export function uploadPhoto(cafeId: string, file: File): Promise<CafePhoto> {
+  const body = new FormData();
+  body.append('photo', file);
+
+  return request<CafePhoto>(`/api/cafes/${cafeId}/photos`, {
+    method: 'POST',
+    body,
+  });
+}
+
+/** Las fotos subidas llegan con ruta relativa a la API (`/api/photos/…`). */
+export function resolvePhotoUrl(url: string): string {
+  return url.startsWith('/') ? `${API_URL}${url}` : url;
+}
+
+/** Los cafés de la base de datos de la API admiten cuentas, fotos y reseñas
+ *  vinculadas; los de OpenStreetMap (`osm-…`) no existen en ella. */
+export function isApiCafe(id: string): boolean {
+  return USE_API && !id.startsWith('osm-');
 }

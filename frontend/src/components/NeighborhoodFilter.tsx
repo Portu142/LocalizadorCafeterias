@@ -20,7 +20,7 @@ export function NeighborhoodFilter({
 }: NeighborhoodFilterProps) {
   return (
     <div
-      className="flex flex-wrap items-center gap-2"
+      className="-mx-4 flex min-w-0 basis-full items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:basis-auto sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
       role="group"
       aria-label="Filtros de cafeterías"
     >
@@ -31,7 +31,7 @@ export function NeighborhoodFilter({
           onClick={() => onChange(neighborhood)}
           aria-pressed={active === neighborhood}
           className={cn(
-            'rounded-full border px-3.5 py-2 text-xs font-semibold transition',
+            'shrink-0 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-semibold transition',
             active === neighborhood
               ? 'border-coffee-900 bg-coffee-900 text-cream-50'
               : 'border-coffee-200 bg-white/70 text-coffee-700 hover:border-coffee-300 hover:bg-white',
@@ -46,7 +46,7 @@ export function NeighborhoodFilter({
         onClick={onToggleFavorites}
         aria-pressed={showFavorites}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition',
+          'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-semibold transition',
           showFavorites
             ? 'border-rose-300 bg-rose-50 text-rose-700'
             : 'border-coffee-200 bg-white/70 text-coffee-700 hover:border-coffee-300 hover:bg-white',

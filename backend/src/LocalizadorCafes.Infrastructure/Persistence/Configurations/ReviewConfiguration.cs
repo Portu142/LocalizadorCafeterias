@@ -1,3 +1,4 @@
+using LocalizadorCafes.Infrastructure.Identity;
 using LocalizadorCafes.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -23,5 +24,13 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
 
         builder.Property(review => review.Rating)
             .IsRequired();
+
+        // Si se borra la cuenta, la reseña se conserva sin vincular.
+        builder.HasOne<AppUser>()
+            .WithMany()
+            .HasForeignKey(review => review.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(review => review.UserId);
     }
 }

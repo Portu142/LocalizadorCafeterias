@@ -1,5 +1,6 @@
 import { Heart, MapPin, Navigation, Star } from 'lucide-react';
 import { formatDistance } from '../lib/geo';
+import { isOpenAt } from '../lib/openingHours';
 import { cn } from '../lib/utils';
 import type { CafeSummary } from '../types/cafe';
 
@@ -20,6 +21,8 @@ export function CafeCard({
   onSelect,
   onToggleFavorite,
 }: CafeCardProps) {
+  const open = isOpenAt(cafe.hours);
+
   return (
     <article
       className={cn(
@@ -42,6 +45,16 @@ export function CafeCard({
               <span className="inline-flex items-center gap-1 rounded-full bg-caramel-500/10 px-2 py-0.5 font-semibold text-caramel-700">
                 <Navigation className="h-3 w-3" aria-hidden="true" />
                 {formatDistance(distanceKm)}
+              </span>
+            )}
+            {open !== null && (
+              <span
+                className={cn(
+                  'rounded-full px-2 py-0.5 font-semibold',
+                  open ? 'bg-emerald-50 text-emerald-800' : 'bg-cream-200 text-coffee-600',
+                )}
+              >
+                {open ? 'Abierto' : 'Cerrado'}
               </span>
             )}
             {cafe.reviewCount > 0 ? (

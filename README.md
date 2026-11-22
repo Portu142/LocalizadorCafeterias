@@ -29,6 +29,10 @@ El objetivo era construir algo más que una landing: una aplicación real con se
 - **Cerca de mí**: geolocalización del dispositivo con haversine, radio de 5 km y orden por distancia; estados de permiso concedido, denegado, no disponible y timeout. La ubicación se pide automáticamente al cargar.
 - Búsqueda por nombre, dirección o barrio, insensible a mayúsculas y acentos.
 - Filtro por barrio y vista de favoritos persistentes e independientes de la ubicación.
+- **Filtros combinables**: «Abierto ahora» (interpreta el horario de OpenStreetMap o el de la API) y servicios como wifi, terraza, enchufes, accesible, para llevar, mascotas u opciones veganas.
+- **Servicios y fotos** en la ficha: etiquetas con icono y fotos con autor y licencia (Wikimedia Commons o subidas por la comunidad).
+- **Carta**: si no hay menú publicado, enlace directo a la carta o a la web del local (OpenStreetMap) o a su ficha en Google Maps, donde está la pestaña «Carta».
+- **Cuentas** (con la API): registro e inicio de sesión con ASP.NET Identity y cookie HttpOnly; las reseñas se firman con el nombre de la cuenta, se pueden subir fotos y hay una vista «Mis reseñas».
 - Mapa Leaflet/OpenStreetMap con marcadores sincronizados con el listado, punto azul con tu posición y encuadre automático de los resultados.
 - Ficha de cafetería: distancia a tu posición, horario, teléfono, enlace a Google Maps, menú y reseñas.
 - Formulario de reseñas con validación en cliente y servidor, contador de caracteres y estados de éxito/error.
@@ -257,7 +261,14 @@ El servicio `db` espera a estar sano antes de arrancar la API; `Database__AutoMi
 | --- | --- | --- |
 | `GET` | `/api/cafes` | Lista/busca cafeterías. Parámetros: `search`, `lat`, `lng`, `radiusKm`. |
 | `GET` | `/api/cafes/{id}` | Ficha completa con menú y reseñas. |
-| `POST` | `/api/cafes/{id}/reviews` | Añade una reseña. Limitado a 8 peticiones/minuto por IP. |
+| `POST` | `/api/cafes/{id}/reviews` | Añade una reseña. **Requiere sesión**; el autor es el nombre de la cuenta. Limitado a 8 peticiones/minuto por IP. |
+| `POST` | `/api/cafes/{id}/photos` | Sube una foto (`multipart/form-data`, campo `photo`; JPEG, PNG o WebP de hasta 5 MB, validada por su contenido). Requiere sesión; 20 por hora. |
+| `GET` | `/api/photos/{archivo}` | Sirve una foto subida. |
+| `POST` | `/api/auth/register` | Crea una cuenta (`email`, `password`, `displayName`) e inicia sesión. |
+| `POST` | `/api/auth/login` | Inicia sesión. Bloqueo de 5 minutos tras 5 intentos fallidos y 10 peticiones/minuto por IP. |
+| `POST` | `/api/auth/logout` | Cierra la sesión. |
+| `GET` | `/api/auth/me` | Usuario actual o `401`. |
+| `GET` | `/api/me/reviews` | Reseñas del usuario actual. |
 | `GET` | `/health` | Estado de la API y la base de datos. |
 
 Ejemplos:
@@ -267,7 +278,15 @@ curl "http://localhost:5067/api/cafes?search=malasa%C3%B1a"
 curl "http://localhost:5067/api/cafes?lat=40.4168&lng=-3.7038&radiusKm=3"
 curl -X POST "http://localhost:5067/api/cafes/11111111-1111-1111-1111-111111111111/reviews" \
   -H "Content-Type: application/json" \
-  -d '{"author":"Ana","rating":5,"comment":"Un café excelente y un ambiente muy tranquilo.","itemRatings":[{"menuItemId":"<id-del-plato>","score":5}]}'
+  -b cookies.txt -c cookies.txt \n  -d '{"rating":5,"comment":"Un café excelente y un ambiente muy tranquilo.","itemRatings":[{"menuItemId":"<id-del-plato>","score":5}]}'
+```
+
+La sesión viaja en la cookie HttpOnly `lc_session` (`SameSite=Lax`), así que el frontend nunca maneja tokens. Las fotos subidas y las claves que cifran la cookie se guardan en `App_Data/` (configurable con `Storage__AppDataPath`; en Docker, el volumen `apidata` montado en `/data`).
+
+Hay dos `DbContext` (el de PostgreSQL y uno en memoria solo para las cuentas del modo demo), así que las migraciones se crean indicando el contexto:
+
+```bash
+dotnet ef migrations add <Nombre> --context AppDbContext --project backend/src/LocalizadorCafes.Infrastructure --startup-project backend/src/LocalizadorCafes.Api --output-dir Persistence/Migrations
 ```
 
 La validación devuelve `400` con `ValidationProblemDetails`; los parámetros geográficos se comprueban antes de llegar a la base de datos.
@@ -344,7 +363,7 @@ El workflow `.github/workflows/backend.yml` compila y ejecuta las pruebas del ba
 
 ### Limitaciones conocidas
 
-- La demo funciona en **modo demo**: no hay backend público, por lo que las reseñas se guardan solo en el navegador. Los cafés son reales de OpenStreetMap, que no publica cartas: el menú aparece vacío y no hay puntuación por plato en esa vista. Para los menús hace falta la API .NET + PostgreSQL.
+- La demo funciona en **modo demo**: no hay backend público, por lo que las reseñas se guardan solo en el navegador y no hay cuentas ni subida de fotos (necesitan la API). Los cafés son reales de OpenStreetMap, que no publica cartas: el menú aparece vacío y no hay puntuación por plato en esa vista. Para los menús hace falta la API .NET + PostgreSQL.
 - El dataset de PostgreSQL es **solo de Madrid**: fuera de 5 km la API devuelve `[]` y el frontend cae a OpenStreetMap. Las reseñas de esos cafés de OSM se guardan en `localStorage` (clave `localizador_cafes_mock_reviews`), no en PostgreSQL.
 - El backend se ha validado de extremo a extremo contra **PostgreSQL 16 + PostGIS 3.4** reales (migraciones, seed, filtro por radio con `geography`, detalle y alta de reseñas). En Windows puede arrancarse con `scripts/start-db.ps1`; también hay `docker-compose.yml` para Docker.
 - El mapa depende de OpenStreetMap; sin conexión, los tiles no cargan (el resto de la interfaz sigue funcionando).

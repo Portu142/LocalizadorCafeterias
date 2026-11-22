@@ -22,5 +22,9 @@ EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 COPY --from=build /app/publish .
+# Fotos subidas y claves de sesión: carpeta propia del usuario sin privilegios
+# (montar un volumen en /data para que sobrevivan a los reinicios).
+ENV Storage__AppDataPath=/data
+RUN mkdir -p /data && chown $APP_UID /data
 USER $APP_UID
 ENTRYPOINT ["dotnet", "LocalizadorCafes.Api.dll"]

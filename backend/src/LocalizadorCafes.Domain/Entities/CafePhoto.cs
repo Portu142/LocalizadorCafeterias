@@ -14,4 +14,7 @@ public class CafePhoto : BaseEntity
     public string Author { get; set; } = string.Empty;
     public string License { get; set; } = string.Empty;
     public string SourceUrl { get; set; } = string.Empty;
+
+    /// <summary>Usuario que la subió (null en fotos de fuentes externas).</summary>
+    public Guid? UploadedByUserId { get; set; }
 }

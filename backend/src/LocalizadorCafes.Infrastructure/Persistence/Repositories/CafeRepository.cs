@@ -68,4 +68,24 @@ public class CafeRepository : ICafeRepository
         _dbContext.Reviews.Add(review);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task AddPhotoAsync(CafePhoto photo, CancellationToken cancellationToken = default)
+    {
+        _dbContext.CafePhotos.Add(photo);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<(Review Review, Cafe Cafe)>> GetReviewsByUserAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var reviews = await _dbContext.Reviews
+            .AsNoTracking()
+            .Include(review => review.Cafe)
+            .Where(review => review.UserId == userId)
+            .OrderByDescending(review => review.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return reviews.Select(review => (review, review.Cafe)).ToList();
+    }
 }

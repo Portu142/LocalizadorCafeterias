@@ -8,4 +8,6 @@ public record CafeSummaryDto(
     double Rating,
     int ReviewCount,
     double Latitude,
-    double Longitude);
+    double Longitude,
+    IReadOnlyList<string> Tags,
+    string Hours);

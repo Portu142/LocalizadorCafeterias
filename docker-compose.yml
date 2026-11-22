@@ -27,6 +27,8 @@ services:
       ReverseProxy__TrustForwardedHeaders: "false"
     ports:
       - "5080:8080"
+    volumes:
+      - apidata:/data
     depends_on:
       db:
         condition: service_healthy
@@ -45,3 +47,4 @@ services:
 
 volumes:
   pgdata:
+  apidata:

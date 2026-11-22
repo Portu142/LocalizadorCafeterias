@@ -11,6 +11,9 @@ namespace LocalizadorCafes.UnitTests.Cafes;
 
 public class CafeServiceTests
 {
+    private static readonly Guid UserId = Guid.NewGuid();
+    private static readonly ReviewAuthor Author = new(UserId, "Ana");
+
     [Fact]
     public async Task SearchAsync_ShouldReturnAverageRatingAndReviewCount()
     {
@@ -28,13 +31,15 @@ public class CafeServiceTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Cafe> { cafe });
 
-        var service = new CafeService(repository.Object);
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
 
         var result = await service.SearchAsync(null, null, null, null);
 
         result.Should().HaveCount(1);
         result[0].Rating.Should().Be(4.0);
         result[0].ReviewCount.Should().Be(2);
+        result[0].Hours.Should().Be("9-18");
+        result[0].Tags.Should().BeEmpty();
     }
 
     [Fact]
@@ -45,17 +50,18 @@ public class CafeServiceTests
             .Setup(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Cafe?)null);
 
-        var service = new CafeService(repository.Object);
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
 
         var result = await service.AddReviewAsync(
             Guid.NewGuid(),
-            new CreateReviewRequest("Ana", 5, "Bueno"));
+            new CreateReviewRequest(null, 5, "Bueno"),
+            Author);
 
         result.Should().BeNull();
     }
 
     [Fact]
-    public async Task AddReviewAsync_ShouldTrimFieldsAndReturnReview()
+    public async Task AddReviewAsync_ShouldUseAccountNameAndTrimFields()
     {
         var cafe = CreateCafe();
 
@@ -67,14 +73,22 @@ public class CafeServiceTests
             .Setup(x => x.AddReviewAsync(It.IsAny<Review>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var service = new CafeService(repository.Object);
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
 
         var result = await service.AddReviewAsync(
             cafe.Id,
-            new CreateReviewRequest("  Ana  ", 5, "  Muy bueno  "));
+            // El autor enviado por el cliente se ignora: manda la cuenta.
+            new CreateReviewRequest("Suplantador", 5, "  Muy bueno  "),
+            new ReviewAuthor(UserId, "  Ana  "));
 
         result.Should().NotBeNull();
         result!.Author.Should().Be("Ana");
+        repository.Verify(x => x.AddReviewAsync(
+            It.Is<Review>(review => review.UserId == UserId && review.Author == "Ana"),
+            It.IsAny<CancellationToken>()));
+        repository.Verify(x => x.AddReviewAsync(
+            It.Is<Review>(review => review.UserId == UserId && review.Author == "Ana"),
+            It.IsAny<CancellationToken>()));
         result.Comment.Should().Be("Muy bueno");
         result.Rating.Should().Be(5);
         result.ItemRatings.Should().BeEmpty();
@@ -97,7 +111,7 @@ public class CafeServiceTests
             .Callback<Review, CancellationToken>((review, _) => stored = review)
             .Returns(Task.CompletedTask);
 
-        var service = new CafeService(repository.Object);
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
 
         var result = await service.AddReviewAsync(
             cafe.Id,
@@ -109,7 +123,8 @@ public class CafeServiceTests
                 {
                     new CreateMenuItemRating(latte.Id, 4),
                     new CreateMenuItemRating(cake.Id, 5)
-                }));
+                }),
+            Author);
 
         result.Should().NotBeNull();
         result!.ItemRatings.Should().HaveCount(2);
@@ -137,7 +152,7 @@ public class CafeServiceTests
             .Setup(x => x.AddReviewAsync(It.IsAny<Review>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var service = new CafeService(repository.Object);
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
 
         var act = () => service.AddReviewAsync(
             cafe.Id,
@@ -145,7 +160,8 @@ public class CafeServiceTests
                 "Ana",
                 5,
                 "Comentario válido.",
-                new[] { new CreateMenuItemRating(Guid.NewGuid(), 5) }));
+                new[] { new CreateMenuItemRating(Guid.NewGuid(), 5) }),
+            Author);
 
         await act.Should().ThrowAsync<ValidationException>();
 
@@ -172,7 +188,7 @@ public class CafeServiceTests
             .Setup(x => x.GetByIdAsync(cafe.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cafe);
 
-        var service = new CafeService(repository.Object);
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
 
         var result = await service.GetByIdAsync(cafe.Id);
 

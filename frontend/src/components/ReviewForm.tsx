@@ -1,5 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { CheckCircle2, Loader2, Send } from 'lucide-react';
+import { CheckCircle2, Loader2, LogIn, Send } from 'lucide-react';
+import { ApiError, isApiCafe } from '../api/cafes';
+import { useCurrentUser, useForgetUser } from '../hooks/useAuth';
 import { useCreateReview } from '../hooks/useCreateReview';
 import type { MenuItem } from '../types/cafe';
 import { StarRating } from './StarRating';
@@ -7,6 +9,8 @@ import { StarRating } from './StarRating';
 type ReviewFormProps = {
   cafeId: string;
   menu: MenuItem[];
+  /** Abre la ventana de inicio de sesión. */
+  onRequestLogin: () => void;
 };
 
 type FieldErrors = {
@@ -14,7 +18,12 @@ type FieldErrors = {
   comment?: string;
 };
 
-export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
+export function ReviewForm({ cafeId, menu, onRequestLogin }: ReviewFormProps) {
+  // Los cafés de la API exigen cuenta: la reseña se firma con su nombre.
+  // Los de OpenStreetMap (y la demo sin API) se guardan en el navegador.
+  const requiresAccount = isApiCafe(cafeId);
+  const { data: user } = useCurrentUser();
+  const forgetUser = useForgetUser();
   const [author, setAuthor] = useState('');
   const [rating, setRating] = useState(5);
   const [itemScores, setItemScores] = useState<Record<string, number>>({});
@@ -28,7 +37,9 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
   const validate = () => {
     const nextErrors: FieldErrors = {};
 
-    if (!author.trim()) {
+    if (requiresAccount) {
+      // El nombre sale de la cuenta.
+    } else if (!author.trim()) {
       nextErrors.author = 'Escribe tu nombre para publicar la reseña.';
     } else if (author.trim().length < 2) {
       nextErrors.author = 'El nombre debe tener al menos 2 caracteres.';
@@ -61,7 +72,7 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
 
     mutation.mutate(
       {
-        author: author.trim(),
+        author: requiresAccount ? (user?.displayName ?? '') : author.trim(),
         rating,
         comment: comment.trim(),
         // Solo se envían los platos que el usuario ha puntuado.
@@ -78,9 +89,31 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
           setErrors({});
           setSuccess(true);
         },
+        onError: (error) => {
+          // La sesión ha caducado: se vuelve a pedir el inicio de sesión.
+          if (error instanceof ApiError && error.status === 401) {
+            forgetUser();
+          }
+        },
       },
     );
   };
+
+  if (requiresAccount && !user) {
+    return (
+      <div className="mt-6 rounded-2xl border border-coffee-100 bg-white p-4 text-center">
+        <h3 className="text-sm font-semibold text-coffee-950">Deja tu reseña</h3>
+        <p className="mt-1 text-xs leading-5 text-coffee-600">
+          Inicia sesión para publicar tu reseña con tu nombre y verla luego en
+          «Mis reseñas».
+        </p>
+        <button type="button" onClick={onRequestLogin} className="btn-primary mt-3">
+          <LogIn className="h-4 w-4" aria-hidden="true" />
+          Iniciar sesión o crear cuenta
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form
@@ -94,6 +127,12 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
       </p>
 
       <div className="mt-4 space-y-3">
+        {requiresAccount ? (
+          <p className="text-xs text-coffee-600">
+            Publicarás como{' '}
+            <span className="font-semibold text-coffee-900">{user?.displayName}</span>
+          </p>
+        ) : (
         <div>
           <label
             htmlFor="review-author"
@@ -129,6 +168,7 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
             </p>
           )}
         </div>
+        )}
 
         <div>
           <span className="mb-1 block text-xs font-medium text-coffee-700">

@@ -55,6 +55,8 @@ export function useFavorites() {
       reviewCount: cafe.reviewCount,
       latitude: cafe.latitude,
       longitude: cafe.longitude,
+      tags: cafe.tags,
+      hours: cafe.hours,
     };
 
     setFavorites((current) => {

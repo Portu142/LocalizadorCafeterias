@@ -2,6 +2,9 @@ using System.Threading.RateLimiting;
 using LocalizadorCafes.Api.Middleware;
 using LocalizadorCafes.Application;
 using LocalizadorCafes.Infrastructure;
+using LocalizadorCafes.Infrastructure.Identity;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
 using LocalizadorCafes.Infrastructure.Persistence;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -40,8 +43,69 @@ builder.Host.UseSerilog((context, services, configuration) =>
         .WriteTo.Console();
 });
 
+// Fotos subidas y claves de Data Protection (cifran la cookie de sesión).
+// Persistir las claves evita que todas las sesiones caduquen al reiniciar.
+var appDataPath = builder.Configuration["Storage:AppDataPath"] is { Length: > 0 } configuredPath
+    ? Path.GetFullPath(configuredPath, builder.Environment.ContentRootPath)
+    : Path.Combine(builder.Environment.ContentRootPath, "App_Data");
+
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration, useInMemory);
+builder.Services.AddInfrastructure(
+    builder.Configuration,
+    useInMemory,
+    Path.Combine(appDataPath, "uploads"));
+
+builder.Services.AddDataProtection()
+    .SetApplicationName("LocalizadorCafes")
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(appDataPath, "keys")));
+
+// Cuentas con ASP.NET Identity y sesión en cookie HttpOnly.
+builder.Services
+    .AddAuthentication(IdentityConstants.ApplicationScheme)
+    .AddIdentityCookies();
+
+builder.Services
+    .AddIdentityCore<AppUser>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        options.Password.RequiredLength = 8;
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+        options.Lockout.AllowedForNewUsers = true;
+    })
+    .AddErrorDescriber<SpanishIdentityErrorDescriber>()
+    .AddSignInManager()
+    .AddIdentityStores(useInMemory);
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.Name = "lc_session";
+    options.Cookie.HttpOnly = true;
+    // Lax: el navegador no envía la cookie en peticiones POST desde otros
+    // sitios, lo que protege frente a CSRF sin tokens adicionales.
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.ExpireTimeSpan = TimeSpan.FromDays(14);
+    options.SlidingExpiration = true;
+
+    // Es una API: sin redirecciones a páginas de login, solo códigos HTTP.
+    options.Events.OnRedirectToLogin = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Task.CompletedTask;
+    };
+});
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -74,10 +138,13 @@ builder.Services.AddCors(options =>
             };
         }
 
+        // AllowCredentials: el frontend envía la cookie de sesión. Exige una
+        // lista explícita de orígenes (nunca "*").
         policy
             .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -93,6 +160,33 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = 8,
                 Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+
+    // Registro y login: frena ataques de fuerza bruta por IP (además del
+    // bloqueo de cuenta tras 5 intentos fallidos).
+    options.AddPolicy("auth", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+
+    // Subida de fotos: por usuario, 20 a la hora.
+    options.AddPolicy("uploads", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.User.Identity?.Name
+                ?? context.Connection.RemoteIpAddress?.ToString()
+                ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromHours(1),
                 QueueLimit = 0,
                 AutoReplenishment = true
             }));
@@ -144,6 +238,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("Frontend");
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseRateLimiter();
 app.MapControllers();
 app.MapHealthChecks("/health");

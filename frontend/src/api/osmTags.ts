@@ -82,3 +82,32 @@ export function photosFromOsm(tags: OsmTags): CafePhoto[] {
     sourceUrl: `${COMMONS_FILE_PAGE}File:${encodeURIComponent(file.slice(5))}`,
   }));
 }
+
+/** Solo enlaces web normales: descarta `javascript:` y similares. */
+function safeUrl(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const candidate = /^https?:\/\//i.test(value.trim()) ? value.trim() : `https://${value.trim()}`;
+
+  try {
+    const url = new URL(candidate);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Datos de la ficha que salen de las etiquetas de un elemento de OSM. */
+export function detailsFromOsmTags(tags: OsmTags) {
+  return {
+    phone: tags.phone ?? tags['contact:phone'] ?? '',
+    hours: tags.opening_hours ?? '',
+    tags: tagsFromOsm(tags),
+    photos: photosFromOsm(tags),
+    website: safeUrl(tags.website ?? tags['contact:website']),
+    // OSM usa varias claves para la carta; se aceptan las más habituales.
+    menuUrl: safeUrl(tags['website:menu'] ?? tags['menu:url'] ?? tags['contact:menu']),
+  };
+}

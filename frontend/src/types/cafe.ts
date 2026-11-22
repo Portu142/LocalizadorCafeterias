@@ -7,6 +7,10 @@ export type CafeSummary = {
   reviewCount: number;
   latitude: number;
   longitude: number;
+  /** Servicios (wifi, terraza…) para los filtros. Puede faltar si no hay datos. */
+  tags?: string[];
+  /** Horario en formato OSM o «Lun-Vie 08:00-20:00 · …»; vacío si no se conoce. */
+  hours?: string;
 };
 
 export type MenuItem = {
@@ -53,9 +57,10 @@ export type CafePhoto = {
 export type CafeDetail = CafeSummary & {
   phone: string;
   hours: string;
-  /** Puede faltar si la API es anterior a las etiquetas. */
-  tags?: string[];
   photos?: CafePhoto[];
+  /** Web del local y enlace directo a su carta (de OpenStreetMap). */
+  website?: string;
+  menuUrl?: string;
   menu: MenuItem[];
   reviews: Review[];
 };
@@ -70,4 +75,19 @@ export type CreateReviewRequest = {
   rating: number;
   comment: string;
   itemRatings: CreateMenuItemRating[];
+};
+
+export type User = {
+  id: string;
+  email: string;
+  displayName: string;
+};
+
+export type UserReview = {
+  id: string;
+  cafeId: string;
+  cafeName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
 };

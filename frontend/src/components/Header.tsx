@@ -1,6 +1,12 @@
 import { Coffee } from 'lucide-react';
+import { AccountMenu } from './AccountMenu';
 
-export function Header() {
+type HeaderProps = {
+  onLogin: () => void;
+  onMyReviews: () => void;
+};
+
+export function Header({ onLogin, onMyReviews }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-coffee-100/80 bg-cream-50/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 lg:px-8">
@@ -30,12 +36,15 @@ export function Header() {
           </a>
         </nav>
 
-        <a
-          className="inline-flex items-center rounded-full border border-coffee-200 bg-white/70 px-3 py-1.5 text-xs font-semibold text-coffee-800 transition hover:border-coffee-300 hover:bg-white md:hidden"
-          href="#explorar"
-        >
-          Explorar
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            className="inline-flex items-center rounded-full border border-coffee-200 bg-white/70 px-3 py-2 text-xs font-semibold text-coffee-800 transition hover:border-coffee-300 hover:bg-white md:hidden"
+            href="#explorar"
+          >
+            Explorar
+          </a>
+          <AccountMenu onLogin={onLogin} onMyReviews={onMyReviews} />
+        </div>
       </div>
     </header>
   );
