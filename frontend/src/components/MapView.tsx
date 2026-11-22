@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet.markercluster';
+// CSS de Leaflet en el chunk diferido del mapa: no bloquea el primer render.
+import 'leaflet/dist/leaflet.css';
+import './map.css';
 import { LocateFixed } from 'lucide-react';
 import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
 import type { Coordinates } from '../lib/geo';
@@ -265,7 +268,7 @@ export function MapView({
 
   return (
     <section
-      className="relative h-full min-h-[320px] overflow-hidden rounded-3xl border border-coffee-100 shadow-soft"
+      className="relative isolate h-full min-h-[320px] overflow-hidden rounded-3xl border border-coffee-100 shadow-soft"
       role="region"
       aria-label="Mapa de cafeterías"
     >
@@ -279,7 +282,7 @@ export function MapView({
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapController selectedId={selectedId} userLocation={userLocation ?? null} cafes={cafes} />
         <MapA11y />

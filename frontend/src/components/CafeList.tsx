@@ -12,6 +12,7 @@ type CafeListProps = {
   emptyTitle?: string;
   emptyDescription?: string;
   sourceNote?: string;
+  emptyActionLabel?: string;
   onSelect: (id: string) => void;
   onToggleFavorite: (cafe: CafeSummary) => void;
   onRetry: () => void;
@@ -28,6 +29,7 @@ export function CafeList({
   emptyTitle = 'No hay resultados con esos filtros.',
   emptyDescription = 'Prueba con otro barrio o borra la búsqueda.',
   sourceNote = 'Datos de ejemplo de Madrid',
+  emptyActionLabel = 'Limpiar filtros',
   onSelect,
   onToggleFavorite,
   onRetry,
@@ -42,17 +44,23 @@ export function CafeList({
           </h2>
           <p className="text-xs text-coffee-500" aria-live="polite">
             {isLoading
-              ? 'Buscando cafeterías...'
+              ? 'Buscando cafeterías…'
               : `${cafes.length} cafetería${cafes.length === 1 ? '' : 's'}`}
           </p>
         </div>
-        <span className="rounded-full bg-cream-100 px-3 py-1 text-xs font-semibold text-coffee-700">
-          {cafes.length}
+        <span
+          className="rounded-full bg-cream-100 px-3 py-1 text-xs font-semibold text-coffee-700"
+          aria-hidden="true"
+        >
+          {isLoading ? '…' : cafes.length}
         </span>
       </div>
 
       <div className="relative flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto p-3">
+        <div
+          className="h-full overflow-y-auto p-3"
+          aria-busy={isLoading}
+        >
           {isLoading && (
             <div className="space-y-2" aria-hidden="true">
               {Array.from({ length: 4 }).map((_, index) => (
@@ -89,7 +97,7 @@ export function CafeList({
               <p className="text-sm font-medium text-coffee-800">{emptyTitle}</p>
               <p className="text-xs text-coffee-500">{emptyDescription}</p>
               <button type="button" onClick={onClearFilters} className="btn-ghost">
-                Limpiar filtros
+                {emptyActionLabel}
               </button>
             </div>
           )}

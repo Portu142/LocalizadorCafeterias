@@ -25,17 +25,17 @@ export function Footer() {
           className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-coffee-600"
           aria-label="Enlaces del pie de página"
         >
-          <a href="#explorar" className="transition hover:text-coffee-950">
+          <a href="#explorar" className="inline-block py-1.5 transition hover:text-coffee-950">
             Explorar
           </a>
-          <a href="#inicio" className="transition hover:text-coffee-950">
+          <a href="#inicio" className="inline-block py-1.5 transition hover:text-coffee-950">
             Volver arriba
           </a>
           <a
             href="https://www.openstreetmap.org/copyright"
             target="_blank"
             rel="noopener noreferrer"
-            className="transition hover:text-coffee-950"
+            className="inline-block py-1.5 transition hover:text-coffee-950"
           >
             Mapa © OpenStreetMap
           </a>
@@ -46,7 +46,7 @@ export function Footer() {
         <div className="mx-auto flex max-w-[1600px] flex-col gap-1.5 px-4 py-4 text-[11px] text-coffee-500 sm:flex-row sm:items-center sm:justify-between lg:px-8">
           <p>© {YEAR} Localizador de Cafés</p>
           {IS_DEMO_MODE && (
-            <p>Datos de demostración · Las reseñas se guardan en tu navegador</p>
+            <p>Datos de OpenStreetMap · Las reseñas se guardan en tu navegador</p>
           )}
         </div>
       </div>

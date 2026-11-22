@@ -91,7 +91,8 @@ function toCafe(feature: PhotonFeature): CafeDetail | null {
     properties.osm_key !== 'amenity' ||
     properties.osm_value !== 'cafe' ||
     !osmType ||
-    properties.osm_id === undefined ||
+    // El id acaba en una URL de openstreetmap.org: solo se aceptan dígitos.
+    !/^\d+$/.test(String(properties.osm_id ?? '')) ||
     !coordinates ||
     typeof coordinates[0] !== 'number' ||
     typeof coordinates[1] !== 'number'

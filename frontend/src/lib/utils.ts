@@ -12,19 +12,26 @@ export function formatPrice(value: number) {
   }).format(value);
 }
 
+const DATE_FORMAT = new Intl.DateTimeFormat('es-ES', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
+/** Fecha corta; una fecha inválida (p. ej. de localStorage) no rompe la ficha. */
 export function formatDate(value: string) {
-  return new Intl.DateTimeFormat('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(value));
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : DATE_FORMAT.format(date);
 }
 
 export function initials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part[0])
+  // Solo letras y números: un nombre como «<Ana>» no debe mostrar «<».
+  const letters = name
+    .split(/\s+/)
+    .map((part) => part.match(/[\p{L}\p{N}]/u)?.[0] ?? '')
+    .filter(Boolean);
+
+  return (letters.length > 0 ? letters : ['?'])
     .join('')
     .slice(0, 2)
     .toUpperCase();

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import {
   AlertCircle,
   Clock,
@@ -37,14 +37,39 @@ export function CafeDetail({
 }: CafeDetailProps) {
   const [activeTab, setActiveTab] = useState<'menu' | 'reviews'>('menu');
 
+  // Patrón de pestañas WAI-ARIA: flechas (con vuelta), Inicio y Fin.
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const next =
+      event.key === 'ArrowRight' || event.key === 'ArrowLeft'
+        ? activeTab === 'menu'
+          ? 'reviews'
+          : 'menu'
+        : event.key === 'Home'
+          ? 'menu'
+          : event.key === 'End'
+            ? 'reviews'
+            : null;
+
+    if (!next) {
+      return;
+    }
+
+    event.preventDefault();
+    setActiveTab(next);
+    document.getElementById(`tab-${next}`)?.focus();
+  };
+
   if (isLoading) {
     return <DetailSkeleton />;
   }
 
   if (isError) {
     return (
-      <section className="card flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
-        <AlertCircle className="h-9 w-9 text-rose-500" />
+      <section
+        className="card flex h-full flex-col items-center justify-center gap-3 p-8 text-center"
+        role="alert"
+      >
+        <AlertCircle className="h-9 w-9 text-rose-500" aria-hidden="true" />
         <h2 className="font-display text-xl font-semibold text-coffee-950">
           No se pudo cargar la ficha
         </h2>
@@ -61,7 +86,9 @@ export function CafeDetail({
   if (!cafe) {
     return (
       <section className="card flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
-        <span className="text-4xl">☕</span>
+        <span className="text-4xl" aria-hidden="true">
+          ☕
+        </span>
         <h2 className="font-display text-xl font-semibold text-coffee-950">
           Selecciona una cafetería
         </h2>
@@ -82,6 +109,8 @@ export function CafeDetail({
         .replace(/^R\//i, 'relation/')}`
     : null;
   const hasMenu = cafe.menu.length > 0;
+  const phoneDigits = cafe.phone.replace(/[^0-9+]/g, '');
+  const phoneHref = phoneDigits.length >= 6 ? `tel:${phoneDigits}` : null;
 
   // Media de cada plato y media global del menú a partir de las reseñas.
   const menuStats = cafe.menu.map((item) => {
@@ -166,19 +195,31 @@ export function CafeDetail({
 
         <div className="mt-4 space-y-2 text-sm text-coffee-600">
           <p className="flex items-start gap-2">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-caramel-500" />
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-caramel-500" aria-hidden="true" />
+            <span className="sr-only">Dirección: </span>
             {cafe.address}
           </p>
           {cafe.hours && (
             <p className="flex items-center gap-2">
-              <Clock className="h-4 w-4 shrink-0 text-caramel-500" />
+              <Clock className="h-4 w-4 shrink-0 text-caramel-500" aria-hidden="true" />
+              <span className="sr-only">Horario: </span>
               {cafe.hours}
             </p>
           )}
           {cafe.phone && (
             <p className="flex items-center gap-2">
-              <Phone className="h-4 w-4 shrink-0 text-caramel-500" />
-              {cafe.phone}
+              <Phone className="h-4 w-4 shrink-0 text-caramel-500" aria-hidden="true" />
+              <span className="sr-only">Teléfono: </span>
+              {phoneHref ? (
+                <a
+                  href={phoneHref}
+                  className="underline-offset-2 hover:text-coffee-900 hover:underline"
+                >
+                  {cafe.phone}
+                </a>
+              ) : (
+                cafe.phone
+              )}
             </p>
           )}
           {typeof distanceKm === 'number' && (
@@ -193,9 +234,10 @@ export function CafeDetail({
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-caramel-600 transition hover:text-caramel-500"
+          className="mt-3 inline-flex items-center gap-1.5 py-1 text-xs font-semibold text-caramel-600 transition hover:text-caramel-700"
         >
           Cómo llegar <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="sr-only">(Google Maps, se abre en una pestaña nueva)</span>
         </a>
       </div>
 
@@ -212,12 +254,7 @@ export function CafeDetail({
           aria-controls="panel-menu"
           tabIndex={activeTab === 'menu' ? 0 : -1}
           onClick={() => setActiveTab('menu')}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowRight') {
-              setActiveTab('reviews');
-              document.getElementById('tab-reviews')?.focus();
-            }
-          }}
+          onKeyDown={handleTabKeyDown}
           className={cn(
             'inline-flex items-center gap-2 rounded-t-xl px-3 py-2 text-sm font-semibold transition',
             activeTab === 'menu'
@@ -235,12 +272,7 @@ export function CafeDetail({
           aria-controls="panel-reviews"
           tabIndex={activeTab === 'reviews' ? 0 : -1}
           onClick={() => setActiveTab('reviews')}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowLeft') {
-              setActiveTab('menu');
-              document.getElementById('tab-menu')?.focus();
-            }
-          }}
+          onKeyDown={handleTabKeyDown}
           className={cn(
             'inline-flex items-center gap-2 rounded-t-xl px-3 py-2 text-sm font-semibold transition',
             activeTab === 'reviews'
@@ -315,16 +347,17 @@ export function CafeDetail({
                     href={osmUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-caramel-600 hover:text-caramel-500"
+                    className="inline-flex items-center gap-1 py-1 text-xs font-semibold text-caramel-600 hover:text-caramel-700"
                   >
                     Ver ficha en OpenStreetMap
                     <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    <span className="sr-only">(se abre en una pestaña nueva)</span>
                   </a>
                 )}
                 <button
                   type="button"
                   onClick={() => setActiveTab('reviews')}
-                  className="text-xs font-semibold text-caramel-600 hover:text-caramel-500"
+                  className="py-1 text-xs font-semibold text-caramel-600 hover:text-caramel-700"
                 >
                   Ver reseñas
                 </button>
@@ -392,7 +425,9 @@ export function CafeDetail({
             )}
           </div>
 
-          <ReviewForm cafeId={cafe.id} menu={cafe.menu} />
+          {/* key: al cambiar de cafetería se descarta lo escrito y cualquier
+              error previo, para no publicar una reseña en el café equivocado. */}
+          <ReviewForm key={cafe.id} cafeId={cafe.id} menu={cafe.menu} />
         </div>
       </div>
     </section>
@@ -401,7 +436,11 @@ export function CafeDetail({
 
 function DetailSkeleton() {
   return (
-    <section className="card flex h-full flex-col overflow-hidden">
+    <section
+      className="card flex h-full flex-col overflow-hidden"
+      aria-busy="true"
+      aria-label="Cargando la ficha de la cafetería"
+    >
       <div className="animate-pulse border-b border-coffee-100 p-5">
         <div className="h-5 w-24 rounded bg-coffee-100" />
         <div className="mt-3 h-8 w-2/3 rounded bg-coffee-100" />

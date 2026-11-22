@@ -31,7 +31,7 @@ export function NeighborhoodFilter({
           onClick={() => onChange(neighborhood)}
           aria-pressed={active === neighborhood}
           className={cn(
-            'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition',
+            'rounded-full border px-3.5 py-2 text-xs font-semibold transition',
             active === neighborhood
               ? 'border-coffee-900 bg-coffee-900 text-cream-50'
               : 'border-coffee-200 bg-white/70 text-coffee-700 hover:border-coffee-300 hover:bg-white',
@@ -46,7 +46,7 @@ export function NeighborhoodFilter({
         onClick={onToggleFavorites}
         aria-pressed={showFavorites}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition',
+          'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition',
           showFavorites
             ? 'border-rose-300 bg-rose-50 text-rose-700'
             : 'border-coffee-200 bg-white/70 text-coffee-700 hover:border-coffee-300 hover:bg-white',

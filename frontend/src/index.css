@@ -5,6 +5,24 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Respeta «reducir movimiento»: sin desplazamientos suaves ni animaciones
+     de carga que puedan marear. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   body {
@@ -46,82 +64,3 @@
   }
 }
 
-.leaflet-container {
-  font-family: inherit;
-  background: #e8e0d5;
-}
-
-.custom-marker {
-  background: transparent;
-  border: 0;
-}
-
-/* Los pines del mapa no son objetivos de teclado: la lista es la vía
-   accesible de selección. Cursor neutro porque varios pines se solapan. */
-.leaflet-marker-icon.leaflet-interactive {
-  cursor: default;
-}
-
-.marker-pin {
-  width: 38px;
-  height: 38px;
-  border-radius: 9999px;
-  background: #3f2d23;
-  color: #fff7ed;
-  border: 3px solid #fdfbf8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  box-shadow: 0 10px 25px -8px rgba(36, 24, 17, 0.6);
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-
-.marker-pin:hover {
-  transform: scale(1.08);
-  background: #c47f3b;
-}
-
-/* Contadores de agrupación (leaflet.markercluster): evitan que los pines de
-   zonas densas se solapen y muestran cuántos cafés hay en cada zona. */
-.cluster-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 9999px;
-  background: #c47f3b;
-  color: #fdfbf8;
-  border: 3px solid #fdfbf8;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: zoom-in;
-  box-shadow: 0 10px 25px -8px rgba(36, 24, 17, 0.6);
-  transition: transform 0.15s ease;
-}
-
-.cluster-badge:hover {
-  transform: scale(1.06);
-}
-
-.user-dot {
-  width: 22px;
-  height: 22px;
-  border-radius: 9999px;
-  background: #2563eb;
-  border: 3px solid #ffffff;
-  box-shadow:
-    0 0 0 6px rgba(37, 99, 235, 0.2),
-    0 4px 12px rgba(37, 99, 235, 0.45);
-}
-
-.leaflet-popup-content-wrapper {
-  border-radius: 16px;
-  padding: 4px;
-}
-
-.leaflet-popup-content {
-  margin: 10px 12px;
-  font-size: 13px;
-}

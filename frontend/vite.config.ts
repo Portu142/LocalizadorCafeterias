@@ -26,7 +26,7 @@ function contentSecurityPolicy(apiOrigin: string | null) {
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
-    "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://tile.openstreetmap.org",
+    "img-src 'self' data: blob: https://tile.openstreetmap.org",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
@@ -84,9 +84,11 @@ export default defineConfig(({ mode }) => {
         apply: 'build',
         enforce: 'post',
         transformIndexHtml(html) {
+          // Una CSP en <meta> solo protege lo que aparece DESPUÉS de ella: se
+          // inserta justo tras el charset, antes de hojas de estilo y scripts.
           return html.replace(
-            '</head>',
-            `    <meta http-equiv="Content-Security-Policy" content="${contentSecurityPolicyHeader}" />\n  </head>`,
+            /(<meta charset="UTF-8" \/>)/i,
+            `$1\n    <meta http-equiv="Content-Security-Policy" content="${contentSecurityPolicyHeader}" />`,
           );
         },
       },

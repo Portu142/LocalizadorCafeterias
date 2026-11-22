@@ -61,9 +61,9 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
 
     mutation.mutate(
       {
-        author,
+        author: author.trim(),
         rating,
-        comment,
+        comment: comment.trim(),
         // Solo se envían los platos que el usuario ha puntuado.
         itemRatings: menu
           .filter((item) => (itemScores[item.id] ?? 0) > 0)
@@ -108,6 +108,9 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
             onChange={(event) => {
               setAuthor(event.target.value);
               setSuccess(false);
+              if (mutation.isError) {
+                mutation.reset();
+              }
               if (errors.author) {
                 setErrors((current) => ({ ...current, author: undefined }));
               }
@@ -131,7 +134,7 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
           <span className="mb-1 block text-xs font-medium text-coffee-700">
             Puntuación general
           </span>
-          <StarRating value={rating} size="md" onChange={setRating} />
+          <StarRating value={rating} size="md" label="general" onChange={setRating} />
         </div>
 
         {menu.length > 0 && (
@@ -169,7 +172,8 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
                           onClick={() =>
                             setItemScores((current) => ({ ...current, [item.id]: 0 }))
                           }
-                          className="text-[10px] font-medium text-coffee-500 underline-offset-2 hover:text-coffee-800 hover:underline"
+                          className="px-1 py-1 text-[11px] font-medium text-coffee-600 underline-offset-2 hover:text-coffee-800 hover:underline"
+                          aria-label={`Quitar la puntuación de ${item.name}`}
                         >
                           Quitar
                         </button>
@@ -187,7 +191,9 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
             <label htmlFor="review-comment" className="block text-xs font-medium text-coffee-700">
               Comentario
             </label>
-            <span className="text-[11px] text-coffee-500">{comment.length}/500</span>
+            <span id="review-comment-count" className="text-[11px] text-coffee-500">
+              {comment.length}/500
+            </span>
           </div>
           <textarea
             id="review-comment"
@@ -196,6 +202,9 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
             onChange={(event) => {
               setComment(event.target.value);
               setSuccess(false);
+              if (mutation.isError) {
+                mutation.reset();
+              }
               if (errors.comment) {
                 setErrors((current) => ({ ...current, comment: undefined }));
               }
@@ -204,7 +213,11 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
             required
             rows={3}
             aria-invalid={Boolean(errors.comment)}
-            aria-describedby={errors.comment ? 'review-comment-error' : undefined}
+            aria-describedby={
+              errors.comment
+                ? 'review-comment-error review-comment-count'
+                : 'review-comment-count'
+            }
             className="w-full resize-none rounded-xl border border-coffee-200 bg-cream-50 px-3 py-2 text-sm text-coffee-950 outline-none transition placeholder:text-coffee-500 focus:border-caramel-400 focus:ring-2 focus:ring-caramel-400/20 aria-[invalid=true]:border-rose-400"
             placeholder="¿Qué te ha parecido el café?"
           />
@@ -221,7 +234,7 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
           role="alert"
           className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700"
         >
-          {mutation.error.message}
+          {mutation.error.message || 'No se pudo publicar la reseña. Inténtalo de nuevo.'}
         </p>
       )}
 
@@ -245,7 +258,7 @@ export function ReviewForm({ cafeId, menu }: ReviewFormProps) {
         ) : (
           <Send className="h-4 w-4" aria-hidden="true" />
         )}
-        {mutation.isPending ? 'Publicando...' : 'Publicar reseña'}
+        {mutation.isPending ? 'Publicando…' : 'Publicar reseña'}
       </button>
     </form>
   );

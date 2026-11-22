@@ -11,10 +11,47 @@ import type {
 
 const MOCK_REVIEWS_KEY = 'localizador_cafes_mock_reviews';
 
+function isStoredReview(value: unknown): value is Review {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const review = value as Partial<Review>;
+
+  return (
+    typeof review.id === 'string' &&
+    typeof review.author === 'string' &&
+    typeof review.comment === 'string' &&
+    typeof review.createdAt === 'string' &&
+    typeof review.rating === 'number' &&
+    review.rating >= 1 &&
+    review.rating <= 5 &&
+    (review.itemRatings === undefined || Array.isArray(review.itemRatings))
+  );
+}
+
+/**
+ * Reseñas del modo demo guardadas en el navegador. localStorage es editable
+ * por el usuario (o por otra versión de la app), así que se descarta todo lo
+ * que no tenga la forma esperada en lugar de dejar que rompa la ficha.
+ */
 function getStoredReviews(): Record<string, Review[]> {
   try {
     const raw = localStorage.getItem(MOCK_REVIEWS_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, Review[]>) : {};
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {};
+    }
+
+    const reviews: Record<string, Review[]> = {};
+    for (const [cafeId, list] of Object.entries(parsed)) {
+      if (Array.isArray(list)) {
+        reviews[cafeId] = list.filter(isStoredReview);
+      }
+    }
+
+    return reviews;
   } catch {
     return {};
   }

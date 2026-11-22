@@ -19,7 +19,7 @@ export function LocationFilter({ status, onRequest, onClear }: LocationFilterPro
       aria-pressed={isActive}
       disabled={isRequesting}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition disabled:cursor-wait disabled:opacity-70',
+        'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition disabled:cursor-wait disabled:opacity-70',
         isActive
           ? 'border-caramel-500 bg-caramel-500/10 text-caramel-700'
           : 'border-coffee-200 bg-white/70 text-coffee-700 hover:border-coffee-300 hover:bg-white',
@@ -33,7 +33,7 @@ export function LocationFilter({ status, onRequest, onClear }: LocationFilterPro
         <LocateFixed className="h-3.5 w-3.5" aria-hidden="true" />
       )}
       {isRequesting
-        ? 'Localizando...'
+        ? 'Localizando…'
         : isActive
           ? 'Cerca de mí'
           : 'Usar mi ubicación'}

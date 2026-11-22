@@ -68,15 +68,17 @@ function App() {
   const distances = useMemo(() => {
     const map = new Map<string, number>();
 
-    // Las distancias se calculan respecto a la ubicación REAL del usuario
-    // (no a la predeterminada), para que el punto azul del mapa y la ficha
-    // muestren la distancia correcta cuando se active "Cerca de mí".
-    const reference = userCoordinates ?? DEFAULT_LOCATION;
+    // Solo hay distancias con la ubicación REAL del usuario: medirlas desde la
+    // ubicación de referencia (Sol) mostraba «Estás a 261 m de aquí» a alguien
+    // que no está en Madrid.
+    if (!userCoordinates) {
+      return map;
+    }
 
     for (const cafe of cafes) {
       map.set(
         cafe.id,
-        distanceKm(reference, {
+        distanceKm(userCoordinates, {
           latitude: cafe.latitude,
           longitude: cafe.longitude,
         }),
@@ -184,12 +186,9 @@ function App() {
         : isError
           ? 'No se pudieron cargar las cafeterías cercanas.'
           : `Mostrando las cafeterías a menos de ${RADIUS_KM} km, ordenadas por cercanía.`
-      : geo.status === 'denied' ||
-          geo.status === 'blocked' ||
-          geo.status === 'unavailable' ||
-          geo.status === 'error'
-        ? `${geo.message} Mientras tanto, mostramos cafeterías de Madrid como referencia.`
-        : 'Mostrando cafeterías de Madrid como referencia. Pulsa «Usar mi ubicación» para ver las de tu zona.';
+      : // El motivo concreto (permiso denegado, sin señal…) ya lo explica
+        // LocationBanner justo encima: aquí no se repite.
+        'Mostrando cafeterías de Madrid como referencia.';
 
   const locationCausedEmpty =
     locationActive &&
@@ -197,12 +196,23 @@ function App() {
     !search.trim() &&
     neighborhood === ALL_NEIGHBORHOODS;
 
+  // Solo se desactiva la ubicación cuando es ella la que deja la lista vacía:
+  // borrar una búsqueda no debe hacerte perder «Cerca de mí».
   const resetFilters = () => {
     setSearch('');
     setNeighborhood(ALL_NEIGHBORHOODS);
     setShowFavorites(false);
-    geo.clear();
+
+    if (locationCausedEmpty) {
+      geo.clear();
+    }
   };
+
+  const emptyActionLabel = showFavorites
+    ? 'Ver todas las cafeterías'
+    : locationCausedEmpty
+      ? 'Quitar «Cerca de mí»'
+      : 'Limpiar filtros';
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
@@ -229,7 +239,12 @@ function App() {
       </a>
 
       <Header />
-      <Hero search={search} onSearchChange={setSearch} stats={stats} />
+      <Hero
+        search={search}
+        onSearchChange={setSearch}
+        stats={stats}
+        isLoading={isLoading || isLocating}
+      />
 
       <main id="explorar" className="mx-auto max-w-[1600px] px-4 py-8 lg:px-8">
         {IS_DEMO_MODE && <DemoNotice />}
@@ -263,7 +278,11 @@ function App() {
         </div>
 
         {!locationActive && !isLocating && (
-          <LocationBanner status={geo.status} onRequest={geo.request} />
+          <LocationBanner
+            status={geo.status}
+            message={geo.message}
+            onRequest={geo.request}
+          />
         )}
 
         {locationNotice && (
@@ -287,7 +306,9 @@ function App() {
         )}
 
         <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)_minmax(0,420px)]">
-          <div className="h-auto lg:h-[620px] xl:h-[720px]">
+          {/* Altura fija también en móvil: con 60 resultados la lista ocupaba
+              miles de píxeles y el mapa y la ficha quedaban fuera de alcance. */}
+          <div className="h-[460px] sm:h-[520px] lg:h-[620px] xl:h-[720px]">
             <CafeList
               cafes={filteredCafes}
               selectedId={effectiveSelectedId}
@@ -315,6 +336,7 @@ function App() {
               onToggleFavorite={toggleFavorite}
               onRetry={() => void refetch()}
               onClearFilters={resetFilters}
+              emptyActionLabel={emptyActionLabel}
               sourceNote={sourceNote}
             />
           </div>
@@ -326,7 +348,7 @@ function App() {
                   className="flex h-full items-center justify-center rounded-3xl border border-coffee-100 bg-cream-50 text-sm text-coffee-500"
                   role="status"
                 >
-                  Cargando mapa...
+                  Cargando mapa…
                 </div>
               }
             >
