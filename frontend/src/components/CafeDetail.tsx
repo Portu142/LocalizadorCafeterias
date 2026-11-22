@@ -24,6 +24,8 @@ type CafeDetailProps = {
   onRetry: () => void;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  /** Solo en la demo: cambia de OSM (sin carta) a los ejemplos con menú. */
+  onShowSample?: () => void;
 };
 
 export function CafeDetail({
@@ -34,6 +36,7 @@ export function CafeDetail({
   onRetry,
   isFavorite,
   onToggleFavorite,
+  onShowSample,
 }: CafeDetailProps) {
   const [activeTab, setActiveTab] = useState<'menu' | 'reviews'>('menu');
 
@@ -302,13 +305,24 @@ export function CafeDetail({
                 Los datos de OpenStreetMap no incluyen cartas. Puedes consultar
                 horarios, ubicación y reseñas de la comunidad.
               </p>
-              <button
-                type="button"
-                onClick={() => setActiveTab('reviews')}
-                className="mt-3 text-xs font-semibold text-caramel-600 hover:text-caramel-500"
-              >
-                Ver reseñas
-              </button>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+                {onShowSample && (
+                  <button
+                    type="button"
+                    onClick={onShowSample}
+                    className="text-xs font-semibold text-caramel-600 hover:text-caramel-500"
+                  >
+                    Ver un ejemplo con menú
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('reviews')}
+                  className="text-xs font-semibold text-caramel-600 hover:text-caramel-500"
+                >
+                  Ver reseñas
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -1,0 +1,26 @@
+{
+  "name": "Localizador de Cafés",
+  "short_name": "Cafés",
+  "description": "Encuentra cafeterías de especialidad cerca de ti con mapa interactivo, menús y reseñas.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f1e8",
+  "theme_color": "#3f2d23",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

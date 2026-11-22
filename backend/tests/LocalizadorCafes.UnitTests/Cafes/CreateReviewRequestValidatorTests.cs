@@ -122,6 +122,20 @@ public class CreateReviewRequestValidatorTests
     }
 
     [Fact]
+    public void Validate_ShouldFail_WhenThereAreTooManyItemRatings()
+    {
+        var items = Enumerable
+            .Range(0, 51)
+            .Select(_ => new CreateMenuItemRating(Guid.NewGuid(), 5))
+            .ToArray();
+
+        var result = _validator.TestValidate(
+            new CreateReviewRequest("Ana", 5, "Un café excelente.", items));
+
+        result.ShouldHaveValidationErrorFor(request => request.ItemRatings);
+    }
+
+    [Fact]
     public void Validate_ShouldFail_WhenCommentIsEmpty()
     {
         var result = _validator.TestValidate(

@@ -24,6 +24,10 @@ public class CreateReviewRequestValidator : AbstractValidator<CreateReviewReques
             .Must(items => items is null || items.Select(item => item.MenuItemId).Distinct().Count() == items.Count)
             .WithMessage("No se puede puntuar el mismo plato más de una vez.");
 
+        RuleFor(x => x.ItemRatings)
+            .Must(items => items is null || items.Count <= 50)
+            .WithMessage("No se pueden puntuar más de 50 platos en una reseña.");
+
         RuleForEach(x => x.ItemRatings).ChildRules(item =>
         {
             item.RuleFor(x => x.MenuItemId)

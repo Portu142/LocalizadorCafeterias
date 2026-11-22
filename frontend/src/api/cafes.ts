@@ -88,6 +88,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export type CafeSource = 'api' | 'osm' | 'mock';
 
+/** Fuente de datos de la demo estática: ejemplos con menú u OSM real. */
+export type DemoSource = 'sample' | 'osm';
+
 export type CafeSearchResult = {
   cafes: CafeSummary[];
   source: CafeSource;
@@ -111,6 +114,7 @@ async function queryOpenStreetMap(location: Coordinates): Promise<CafeDetail[]> 
 
 export async function fetchCafesWithSource(
   location?: Coordinates | null,
+  demoSource: DemoSource = 'sample',
 ): Promise<CafeSearchResult> {
   if (API_URL) {
     const params = new URLSearchParams();
@@ -148,9 +152,18 @@ export async function fetchCafesWithSource(
     return { cafes, source: 'api' };
   }
 
-  // Modo demo sin backend: con ubicación activa se piden cafés reales de
-  // OpenStreetMap. Photon responde en milisegundos y, si no encuentra nada,
-  // se completa con Overpass (que busca por etiqueta y no por nombre).
+  // Modo demo sin backend. Por defecto se usan los ejemplos de Madrid, que sí
+  // incluyen menús y reseñas: OpenStreetMap nunca devuelve cartas. El usuario
+  // puede cambiar a cafés reales de OSM desde el aviso de la demo.
+  if (demoSource === 'sample') {
+    return {
+      cafes: mockCafes.map(withStoredReviews).map(toSummary),
+      source: 'mock',
+    };
+  }
+
+  // Photon responde en milisegundos y, si no encuentra nada, se completa con
+  // Overpass (que busca por etiqueta y no por nombre).
   if (location) {
     const cafes = await queryOpenStreetMap(location);
     return {
@@ -163,13 +176,6 @@ export async function fetchCafesWithSource(
     cafes: mockCafes.map(withStoredReviews).map(toSummary),
     source: 'mock',
   };
-}
-
-export async function fetchCafes(
-  location?: Coordinates | null,
-): Promise<CafeSummary[]> {
-  const { cafes } = await fetchCafesWithSource(location);
-  return cafes;
 }
 
 export async function fetchCafe(id: string): Promise<CafeDetail> {

@@ -5,10 +5,18 @@ import { defineConfig, loadEnv } from 'vite';
 
 const DEFAULT_SITE_URL = 'https://example.github.io/localizador-cafes/';
 
+/** Hosts que el frontend consulta directamente en el modo demo (sin API). */
+const OSM_CONNECT_SRC = [
+  'https://photon.komoot.io',
+  'https://overpass-api.de',
+  'https://overpass.kumi.systems',
+  'https://overpass.private.coffee',
+];
+
 function contentSecurityPolicy(apiOrigin: string | null) {
   // La API local va por HTTP: si se configura VITE_API_URL hay que permitir su
   // origen en connect-src o el navegador bloquea todas las peticiones.
-  const connectSrc = ["'self'", 'https:'];
+  const connectSrc = ["'self'", ...OSM_CONNECT_SRC];
   if (apiOrigin) {
     connectSrc.push(apiOrigin);
   }
