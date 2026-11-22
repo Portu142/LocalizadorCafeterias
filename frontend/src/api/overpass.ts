@@ -165,12 +165,26 @@ export async function queryCafeById(id: string): Promise<CafeDetail | null> {
     return cached;
   }
 
-  const match = /^osm-(node|way|relation)\/(\d+)$/.exec(id);
+  const match = /^osm-([a-z]+)\/(\d+)$/i.exec(id);
   if (!match) {
     return null;
   }
 
-  const elements = await queryOverpass(buildByIdQuery(match[1] as 'node' | 'way' | 'relation', match[2]));
+  const type = match[1].toLowerCase();
+  const normalizedType =
+    type === 'n' || type === 'node'
+      ? 'node'
+      : type === 'w' || type === 'way'
+        ? 'way'
+        : type === 'r' || type === 'relation'
+          ? 'relation'
+          : null;
+
+  if (!normalizedType) {
+    return null;
+  }
+
+  const elements = await queryOverpass(buildByIdQuery(normalizedType, match[2]));
   const cafe = elements.map(toCafeDetail).find((item): item is CafeDetail => item !== null);
 
   if (cafe) {

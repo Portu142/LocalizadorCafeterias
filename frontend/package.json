@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:tunnel": "tsc -b && vite build --mode tunnel",
     "lint": "oxlint",
     "preview": "vite preview"
   },

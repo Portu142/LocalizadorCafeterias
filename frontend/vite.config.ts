@@ -60,9 +60,14 @@ export default defineConfig(({ mode }) => {
     base: './',
     // Permite compartir el build de producción con un túnel de Cloudflare
     // (`cloudflared tunnel --url http://localhost:4173`) sin que Vite bloquee
-    // el Host público con un 403.
+    // el Host público con un 403. El proxy sirve la API en el mismo origen
+    // cuando se compila con VITE_API_URL=same-origin.
     preview: {
       allowedHosts: ['.trycloudflare.com'],
+      proxy: {
+        '/api': { target: 'http://localhost:5067', changeOrigin: true },
+        '/health': { target: 'http://localhost:5067', changeOrigin: true },
+      },
     },
     plugins: [
       react(),

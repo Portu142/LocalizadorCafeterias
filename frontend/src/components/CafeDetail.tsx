@@ -24,8 +24,6 @@ type CafeDetailProps = {
   onRetry: () => void;
   isFavorite: boolean;
   onToggleFavorite: () => void;
-  /** Solo en la demo: cambia de OSM (sin carta) a los ejemplos con menú. */
-  onShowSample?: () => void;
 };
 
 export function CafeDetail({
@@ -36,7 +34,6 @@ export function CafeDetail({
   onRetry,
   isFavorite,
   onToggleFavorite,
-  onShowSample,
 }: CafeDetailProps) {
   const [activeTab, setActiveTab] = useState<'menu' | 'reviews'>('menu');
 
@@ -77,6 +74,13 @@ export function CafeDetail({
   }
 
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${cafe.latitude},${cafe.longitude}`;
+  const osmUrl = cafe.id.startsWith('osm-')
+    ? `https://www.openstreetmap.org/${cafe.id
+        .slice(4)
+        .replace(/^N\//i, 'node/')
+        .replace(/^W\//i, 'way/')
+        .replace(/^R\//i, 'relation/')}`
+    : null;
   const hasMenu = cafe.menu.length > 0;
 
   // Media de cada plato y media global del menú a partir de las reseñas.
@@ -306,14 +310,16 @@ export function CafeDetail({
                 horarios, ubicación y reseñas de la comunidad.
               </p>
               <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-                {onShowSample && (
-                  <button
-                    type="button"
-                    onClick={onShowSample}
-                    className="text-xs font-semibold text-caramel-600 hover:text-caramel-500"
+                {osmUrl && (
+                  <a
+                    href={osmUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-caramel-600 hover:text-caramel-500"
                   >
-                    Ver un ejemplo con menú
-                  </button>
+                    Ver ficha en OpenStreetMap
+                    <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                  </a>
                 )}
                 <button
                   type="button"

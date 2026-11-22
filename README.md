@@ -22,7 +22,7 @@ El objetivo era construir algo más que una landing: una aplicación real con se
 - **Frontend** React 19 + TypeScript + Vite + Tailwind CSS, con React Query para el estado del servidor.
 - **Backend** ASP.NET Core 8 con arquitectura por capas (`Domain`, `Application`, `Infrastructure`, `Api`).
 - **Base de datos** PostgreSQL 16 + PostGIS, con columna `geography(Point)` e índice GIST para búsquedas por cercanía.
-- **Demo estática**: si `VITE_API_URL` está vacío, el frontend funciona sin backend. Por defecto muestra **6 cafeterías de ejemplo de Madrid con menú y reseñas**; un selector permite cambiar a **cafeterías reales de OpenStreetMap** (Photon y Overpass), que no incluyen carta. Las reseñas y los favoritos se guardan en `localStorage`.
+- **Demo estática**: si `VITE_API_URL` está vacío, el frontend funciona sin backend y consulta **cafeterías reales de OpenStreetMap** (Photon y Overpass) cerca de tu ubicación. OSM no publica cartas, así que el menú aparece vacío; las reseñas y los favoritos se guardan en `localStorage`.
 
 ### Funcionalidades
 
@@ -110,7 +110,9 @@ npm run dev
 
 Abre `http://localhost:5173` (API), `http://localhost:5067/swagger` y `http://localhost:5067/health`.
 
-Para el **build demo** (sin API, el que se comparte por túnel):
+Hay dos builds de producción:
+
+**Demo estática (GitHub Pages):** cafés reales de OpenStreetMap, sin API y sin carta.
 
 ```powershell
 cd frontend
@@ -120,14 +122,27 @@ npm run preview
 
 Abre `http://localhost:4173`. El archivo `.env.development.local` no afecta al build: solo se carga con `npm run dev`.
 
+**Túnel con API (menús reales de PostgreSQL):** compila con `VITE_API_URL=same-origin`, de modo que la API se sirve en el mismo origen a través del proxy de `vite preview`.
+
+```powershell
+# Requiere PostgreSQL + API arrancados (pasos 1 y 2 de arriba)
+cd frontend
+npm run build:tunnel
+npm run preview -- --port 4173
+
+# En otra terminal, para compartirlo:
+& "C:\Program Files (x86)\cloudflared\cloudflared.exe" tunnel --url http://localhost:4173 --no-autoupdate
+```
+
+El proxy de `vite preview` reenvía `/api` y `/health` a `http://localhost:5067` y acepta el host `*.trycloudflare.com`. La URL del túnel cambia cada vez que se reinicia.
+
 #### Modo demo (sin backend)
 
-La demo estática **no llama a la API**: React Query lee los datos en el navegador y las reseñas se guardan en `localStorage`. El aviso superior permite elegir la fuente:
+La demo estática **no llama a la API**: React Query consulta **cafeterías reales de OpenStreetMap** (Photon y, como respaldo, Overpass) y las reseñas se guardan en `localStorage`.
 
-- **Ejemplos con menú** (por defecto): 6 cafeterías de Madrid con carta, precios y reseñas. Es la vista pensada para enseñar la puntuación por plato.
-- **Cafés reales (OSM)**: Photon/Overpass devuelven cafeterías reales de tu zona, pero OpenStreetMap no publica cartas; por eso el menú aparece vacío. Es la fuente que se usa al activar la ubicación en ese modo.
-
-La ficha de un café sin carta ofrece el botón **«Ver un ejemplo con menú»** para volver a los datos curados.
+- Los cafés, direcciones, horarios y teléfonos son datos reales de OSM.
+- **OSM no publica cartas**: el menú aparece vacío. En la ficha hay enlaces a OpenStreetMap y Google Maps para consultar la información del local.
+- Para ver menús y puntuación por plato hay que arrancar la API .NET + PostgreSQL (modo completo).
 
 #### 1. Frontend en modo demo (sin backend)
 
@@ -137,7 +152,7 @@ npm ci
 npm run dev
 ```
 
-Abre `http://localhost:5173`. Sin `VITE_API_URL`, la app arranca con los ejemplos de Madrid (con menú); el selector del aviso permite cambiar a cafeterías reales de OpenStreetMap. Las reseñas y los favoritos se guardan en `localStorage`.
+Abre `http://localhost:5173`. Sin `VITE_API_URL`, la app consulta cafeterías reales de OpenStreetMap cerca de tu ubicación. Las reseñas y los favoritos se guardan en `localStorage`.
 
 Para probar el build de producción:
 
@@ -223,7 +238,7 @@ El servicio `db` espera a estar sano antes de arrancar la API; `Database__AutoMi
 
 | Variable | Por defecto | Descripción |
 | --- | --- | --- |
-| `VITE_API_URL` | vacío | URL de la API. Vacío = modo demo: ejemplos con menú y selector de cafés reales de OpenStreetMap. |
+| `VITE_API_URL` | vacío | URL de la API. Vacío = modo demo con cafeterías reales de OpenStreetMap (sin carta). |
 | `VITE_SITE_URL` | `https://example.github.io/localizador-cafes/` | URL pública para canonical, Open Graph y sitemap. |
 
 #### Backend
@@ -259,7 +274,7 @@ La validación devuelve `400` con `ValidationProblemDetails`; los parámetros ge
 
 ### Datos de ejemplo
 
-El seed incluye **6 cafeterías** en 4 barrios de Madrid (Huertas, Malasaña, Palacio, Conde Duque), con menús, horarios y **12 reseñas** iniciales. Los mismos datos alimentan el modo demo en memoria.
+El seed incluye **6 cafeterías** en 4 barrios de Madrid (Huertas, Malasaña, Palacio, Conde Duque), con menús, horarios y **12 reseñas** iniciales. Los mismos datos alimentan el respaldo en memoria de la API cuando PostgreSQL no está disponible.
 
 La base de datos solo cubre Madrid. Para que la app sea útil en cualquier ciudad, el frontend usa una **fuente híbrida**:
 
@@ -291,7 +306,7 @@ npm run build
 ```
 
 - TypeScript en modo estricto y build de producción correcto.
-- Bundle dividido: app principal ≈ 339 kB (104 kB gzip) y mapa ≈ 190 kB (54 kB gzip) cargado con `React.lazy`.
+- Bundle dividido: app principal ≈ 341 kB (104 kB gzip) y mapa ≈ 190 kB (54 kB gzip) cargado con `React.lazy`.
 - CSS ≈ 42 kB (12 kB gzip).
 
 ### Auditoría Lighthouse (build de producción)
@@ -329,7 +344,7 @@ El workflow `.github/workflows/backend.yml` compila y ejecuta las pruebas del ba
 
 ### Limitaciones conocidas
 
-- La demo funciona en **modo demo**: no hay backend público, por lo que las reseñas se guardan solo en el navegador. Por defecto usa ejemplos de Madrid con menú; la opción de cafés reales depende de las APIs públicas de OpenStreetMap (Photon/Overpass), sujetas a disponibilidad, y no incluye cartas.
+- La demo funciona en **modo demo**: no hay backend público, por lo que las reseñas se guardan solo en el navegador. Los cafés son reales de OpenStreetMap, que no publica cartas: el menú aparece vacío y no hay puntuación por plato en esa vista. Para los menús hace falta la API .NET + PostgreSQL.
 - El dataset de PostgreSQL es **solo de Madrid**: fuera de 5 km la API devuelve `[]` y el frontend cae a OpenStreetMap. Las reseñas de esos cafés de OSM se guardan en `localStorage` (clave `localizador_cafes_mock_reviews`), no en PostgreSQL.
 - El backend se ha validado de extremo a extremo contra **PostgreSQL 16 + PostGIS 3.4** reales (migraciones, seed, filtro por radio con `geography`, detalle y alta de reseñas). En Windows puede arrancarse con `scripts/start-db.ps1`; también hay `docker-compose.yml` para Docker.
 - El mapa depende de OpenStreetMap; sin conexión, los tiles no cargan (el resto de la interfaz sigue funcionando).

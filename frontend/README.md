@@ -10,4 +10,4 @@ npm run preview  # sirve el build
 npm run lint
 ```
 
-Sin `VITE_API_URL`, la app funciona en modo demo con los datos de `src/data/mockCafes.ts`. Consulta el [README principal](../README.md) para la arquitectura, la API y el despliegue.
+Sin `VITE_API_URL`, la app funciona en modo demo con cafeterías reales de OpenStreetMap (Photon/Overpass) y guarda las reseñas en `localStorage`. Consulta el [README principal](../README.md) para la arquitectura, la API y el despliegue.

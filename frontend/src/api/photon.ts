@@ -60,17 +60,37 @@ async function queryTerm(
   }
 }
 
+function normalizeOsmType(value: string): 'node' | 'way' | 'relation' | null {
+  switch (value.toLowerCase()) {
+    case 'n':
+    case 'node':
+      return 'node';
+    case 'w':
+    case 'way':
+      return 'way';
+    case 'r':
+    case 'relation':
+      return 'relation';
+    default:
+      return null;
+  }
+}
+
 function toCafe(feature: PhotonFeature): CafeDetail | null {
   const properties = feature.properties;
   const name = properties?.name?.trim();
   const coordinates = feature.geometry?.coordinates;
+  const osmType =
+    typeof properties?.osm_type === 'string'
+      ? normalizeOsmType(properties.osm_type)
+      : null;
 
   if (
     !name ||
     !properties ||
     properties.osm_key !== 'amenity' ||
     properties.osm_value !== 'cafe' ||
-    typeof properties.osm_type !== 'string' ||
+    !osmType ||
     properties.osm_id === undefined ||
     !coordinates ||
     typeof coordinates[0] !== 'number' ||
@@ -88,7 +108,7 @@ function toCafe(feature: PhotonFeature): CafeDetail | null {
   const neighborhood = properties.district ?? properties.locality ?? '';
 
   return {
-    id: `osm-${properties.osm_type}/${properties.osm_id}`,
+    id: `osm-${osmType}/${properties.osm_id}`,
     name,
     address,
     neighborhood,

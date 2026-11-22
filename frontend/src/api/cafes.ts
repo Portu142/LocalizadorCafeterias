@@ -1,5 +1,4 @@
-import { API_URL } from '../config';
-import { mockCafes } from '../data/mockCafes';
+import { API_URL, USE_API } from '../config';
 import type { Coordinates } from '../lib/geo';
 import { queryPhotonCafes } from './photon';
 import { queryCafeById, queryOverpassNearby } from './overpass';
@@ -86,10 +85,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export type CafeSource = 'api' | 'osm' | 'mock';
-
-/** Fuente de datos de la demo estática: ejemplos con menú u OSM real. */
-export type DemoSource = 'sample' | 'osm';
+export type CafeSource = 'api' | 'osm';
 
 export type CafeSearchResult = {
   cafes: CafeSummary[];
@@ -114,9 +110,8 @@ async function queryOpenStreetMap(location: Coordinates): Promise<CafeDetail[]> 
 
 export async function fetchCafesWithSource(
   location?: Coordinates | null,
-  demoSource: DemoSource = 'sample',
 ): Promise<CafeSearchResult> {
-  if (API_URL) {
+  if (USE_API) {
     const params = new URLSearchParams();
 
     if (location) {
@@ -152,18 +147,9 @@ export async function fetchCafesWithSource(
     return { cafes, source: 'api' };
   }
 
-  // Modo demo sin backend. Por defecto se usan los ejemplos de Madrid, que sí
-  // incluyen menús y reseñas: OpenStreetMap nunca devuelve cartas. El usuario
-  // puede cambiar a cafés reales de OSM desde el aviso de la demo.
-  if (demoSource === 'sample') {
-    return {
-      cafes: mockCafes.map(withStoredReviews).map(toSummary),
-      source: 'mock',
-    };
-  }
-
-  // Photon responde en milisegundos y, si no encuentra nada, se completa con
-  // Overpass (que busca por etiqueta y no por nombre).
+  // Modo demo sin backend: siempre se consultan cafeterías reales de
+  // OpenStreetMap. Photon responde en milisegundos y, si no encuentra nada,
+  // se completa con Overpass (que busca por etiqueta y no por nombre).
   if (location) {
     const cafes = await queryOpenStreetMap(location);
     return {
@@ -172,16 +158,13 @@ export async function fetchCafesWithSource(
     };
   }
 
-  return {
-    cafes: mockCafes.map(withStoredReviews).map(toSummary),
-    source: 'mock',
-  };
+  return { cafes: [], source: 'osm' };
 }
 
 export async function fetchCafe(id: string): Promise<CafeDetail> {
   // Los cafés de OpenStreetMap (id `osm-…`) se consultan en OSM aunque haya
   // API: no existen en la base de datos de PostgreSQL.
-  if (API_URL && !id.startsWith('osm-')) {
+  if (USE_API && !id.startsWith('osm-')) {
     return request<CafeDetail>(`/api/cafes/${id}`);
   }
 
@@ -194,12 +177,7 @@ export async function fetchCafe(id: string): Promise<CafeDetail> {
     return withStoredReviews(osmCafe);
   }
 
-  const cafe = mockCafes.find((item) => item.id === id);
-  if (!cafe) {
-    throw new Error('No se encontró la cafetería.');
-  }
-
-  return withStoredReviews(cafe);
+  throw new Error('No se encontró la cafetería.');
 }
 
 export async function createReview(
@@ -208,7 +186,7 @@ export async function createReview(
 ): Promise<Review> {
   // Las reseñas de cafés de OpenStreetMap se guardan en el navegador: la API
   // no los conoce y rechazaría el id.
-  if (API_URL && !cafeId.startsWith('osm-')) {
+  if (USE_API && !cafeId.startsWith('osm-')) {
     return request<Review>(`/api/cafes/${cafeId}/reviews`, {
       method: 'POST',
       body: JSON.stringify(requestBody),
@@ -223,10 +201,7 @@ export async function createReview(
     createdAt: new Date().toISOString(),
     itemRatings: requestBody.itemRatings.map((rating) => ({
       menuItemId: rating.menuItemId,
-      menuItemName:
-        mockCafes
-          .find((cafe) => cafe.id === cafeId)
-          ?.menu.find((item) => item.id === rating.menuItemId)?.name ?? 'Plato',
+      menuItemName: 'Plato',
       score: rating.score,
     })),
   };

@@ -1,5 +1,4 @@
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
-import type { DemoSource } from './api/cafes';
 import { CafeDetail } from './components/CafeDetail';
 import { CafeList } from './components/CafeList';
 import { DemoNotice } from './components/DemoNotice';
@@ -40,22 +39,14 @@ function App() {
   const locationActive = geo.status === 'granted' && geo.coordinates !== null;
   const userCoordinates = locationActive ? geo.coordinates : null;
 
-  // Solo en la demo estática: por defecto se muestran los ejemplos de Madrid
-  // (con menú). El usuario puede cambiar a cafeterías reales de OpenStreetMap.
-  const [demoSource, setDemoSource] = useState<DemoSource>('sample');
-  const usingSampleData = IS_DEMO_MODE && demoSource === 'sample';
-
-  // Los ejemplos no dependen de la ubicación: se cargan al instante sin
-  // esperar al permiso. Con OSM sí se espera para consultar la zona real.
+  // Mientras se resuelve el permiso no se consulta la ubicación de referencia:
+  // evita un parpadeo de cafeterías de Madrid antes de las de tu zona.
   const {
     data: cafeSearch,
     isLoading,
     isError,
     refetch,
-  } = useCafes(userCoordinates ?? DEFAULT_LOCATION, {
-    enabled: !isLocating || usingSampleData,
-    demoSource,
-  });
+  } = useCafes(userCoordinates ?? DEFAULT_LOCATION, { enabled: !isLocating });
   const cafes = useMemo(() => cafeSearch?.cafes ?? [], [cafeSearch]);
   const dataSource = cafeSearch?.source ?? null;
   const { favorites, favoriteIds, toggleFavorite, isFavorite } = useFavorites();
@@ -133,12 +124,6 @@ function App() {
       return matches;
     }
 
-    // Los ejemplos de la demo están todos en Madrid: si el usuario está en otra
-    // ciudad, el radio de 5 km dejaría la lista vacía. Se muestran completos.
-    if (usingSampleData) {
-      return matches;
-    }
-
     // Con ubicación activa, se filtra por radio y ordena por cercanía.
     if (userCoordinates) {
       return matches
@@ -151,7 +136,7 @@ function App() {
     // Sin ubicación del usuario, se muestra la lista completa (ya cargada
     // desde la ubicación predeterminada) sin radio de cercanía.
     return matches;
-  }, [cafes, distances, favoriteCafes, neighborhood, search, showFavorites, userCoordinates, usingSampleData]);
+  }, [cafes, distances, favoriteCafes, neighborhood, search, showFavorites, userCoordinates]);
 
   const effectiveSelectedId = useMemo(() => {
     if (selectedId && filteredCafes.some((cafe) => cafe.id === selectedId)) {
@@ -182,9 +167,8 @@ function App() {
   // Indica de dónde salen los datos que se muestran en el listado. Con la API
   // activa puede ser PostgreSQL (Madrid) o el fallback de OpenStreetMap cuando
   // no hay cafeterías cerca de la ubicación real.
-  const sourceNote = usingSampleData
-    ? 'Datos de ejemplo de Madrid con menú y reseñas'
-    : dataSource === 'osm'
+  const sourceNote =
+    dataSource === 'osm'
       ? IS_DEMO_MODE
         ? locationActive
           ? 'Cafés reales de OpenStreetMap cerca de tu ubicación (sin carta)'
@@ -192,27 +176,22 @@ function App() {
         : 'Cafés reales de OpenStreetMap cerca de ti (la API solo cubre Madrid)'
       : 'Datos servidos por la API (.NET + PostgreSQL)';
 
-  const locationNotice = usingSampleData
-    ? locationActive
-      ? 'Datos de ejemplo de Madrid. Tu ubicación solo se usa para calcular distancias; cambia a «Cafés reales (OSM)» para ver tu zona.'
-      : 'Datos de ejemplo de Madrid con menú y reseñas. Activa tu ubicación si quieres ver distancias.'
-    : isLocating
-      ? 'Pidiendo permiso para acceder a tu ubicación…'
-      : locationActive
-        ? isLoading
-          ? 'Buscando cafeterías reales cerca de ti… puede tardar unos segundos.'
-          : isError
-            ? 'No se pudieron cargar las cafeterías cercanas.'
-            : `Mostrando las cafeterías a menos de ${RADIUS_KM} km, ordenadas por cercanía.`
-        : geo.status === 'denied' ||
-            geo.status === 'blocked' ||
-            geo.status === 'unavailable' ||
-            geo.status === 'error'
-          ? `${geo.message} Mientras tanto, mostramos cafeterías de Madrid como referencia.`
-          : 'Mostrando cafeterías de Madrid como referencia. Pulsa «Usar mi ubicación» para ver las de tu zona.';
+  const locationNotice = isLocating
+    ? 'Pidiendo permiso para acceder a tu ubicación…'
+    : locationActive
+      ? isLoading
+        ? 'Buscando cafeterías reales cerca de ti… puede tardar unos segundos.'
+        : isError
+          ? 'No se pudieron cargar las cafeterías cercanas.'
+          : `Mostrando las cafeterías a menos de ${RADIUS_KM} km, ordenadas por cercanía.`
+      : geo.status === 'denied' ||
+          geo.status === 'blocked' ||
+          geo.status === 'unavailable' ||
+          geo.status === 'error'
+        ? `${geo.message} Mientras tanto, mostramos cafeterías de Madrid como referencia.`
+        : 'Mostrando cafeterías de Madrid como referencia. Pulsa «Usar mi ubicación» para ver las de tu zona.';
 
   const locationCausedEmpty =
-    !usingSampleData &&
     locationActive &&
     !showFavorites &&
     !search.trim() &&
@@ -253,9 +232,7 @@ function App() {
       <Hero search={search} onSearchChange={setSearch} stats={stats} />
 
       <main id="explorar" className="mx-auto max-w-[1600px] px-4 py-8 lg:px-8">
-        {IS_DEMO_MODE && (
-          <DemoNotice source={demoSource} onChange={setDemoSource} />
-        )}
+        {IS_DEMO_MODE && <DemoNotice />}
 
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -316,7 +293,7 @@ function App() {
               selectedId={effectiveSelectedId}
               favorites={favoriteIds}
               distances={distances}
-              isLoading={isLoading || (isLocating && !usingSampleData)}
+              isLoading={isLoading || isLocating}
               isError={isError}
               emptyTitle={
                 showFavorites
@@ -357,7 +334,7 @@ function App() {
                 cafes={filteredCafes}
                 selectedId={selectedId}
                 userLocation={userCoordinates}
-                isLoading={isLoading || (isLocating && !usingSampleData)}
+                isLoading={isLocating || isLoading}
                 emptyMessage={
                   locationCausedEmpty
                     ? 'No hay cafeterías cerca de tu ubicación.'
@@ -387,11 +364,6 @@ function App() {
                   toggleFavorite(selectedCafe);
                 }
               }}
-              onShowSample={
-                IS_DEMO_MODE && demoSource === 'osm'
-                  ? () => setDemoSource('sample')
-                  : undefined
-              }
             />
           </div>
         </div>
