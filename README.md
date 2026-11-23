@@ -244,7 +244,7 @@ El servicio `db` espera a estar sano antes de arrancar la API; `Database__AutoMi
 | Variable | Por defecto | Descripción |
 | --- | --- | --- |
 | `VITE_API_URL` | vacío | URL de la API. Vacío = modo demo con cafeterías reales de OpenStreetMap (sin carta). |
-| `VITE_SITE_URL` | `https://example.github.io/localizador-cafes/` | URL pública para canonical, Open Graph y sitemap. |
+| `VITE_SITE_URL` | `https://portu142.github.io/LocalizadorCafeterias/` | URL pública para canonical, Open Graph y sitemap. |
 
 #### Backend
 
@@ -375,7 +375,7 @@ El workflow `.github/workflows/backend.yml` compila y ejecuta las pruebas del ba
 - El dataset de PostgreSQL es **solo de Madrid**: fuera de 5 km la API devuelve `[]` y el frontend cae a OpenStreetMap. Las reseñas de esos cafés de OSM se guardan en `localStorage` (clave `localizador_cafes_mock_reviews`), no en PostgreSQL.
 - El backend se ha validado de extremo a extremo contra **PostgreSQL 16 + PostGIS 3.4** reales (migraciones, seed, filtro por radio con `geography`, detalle y alta de reseñas). En Windows puede arrancarse con `scripts/start-db.ps1`; también hay `docker-compose.yml` para Docker.
 - El mapa depende de OpenStreetMap; sin conexión, los tiles no cargan (el resto de la interfaz sigue funcionando).
-- `VITE_SITE_URL` debe sustituirse por la URL real antes de publicar.
+- `VITE_SITE_URL` apunta a `https://portu142.github.io/LocalizadorCafeterias/`; el workflow lo recalcula si cambias de repositorio o usas dominio propio.
 - La geolocalización requiere HTTPS (o `localhost`) y el permiso del usuario. Algunos navegadores bloquean los avisos de permiso sin un gesto del usuario (Chrome aplica «quiet blocks»): en ese caso la app muestra el aviso con el botón «Permitir ubicación». Si el permiso está bloqueado de forma permanente, hay que abrirlo desde el candado de la barra de direcciones.
 
 ### Licencia

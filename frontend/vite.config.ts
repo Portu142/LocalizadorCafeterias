@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type ProxyOptions } from 'vite';
 
-const DEFAULT_SITE_URL = 'https://example.github.io/localizador-cafes/';
+const DEFAULT_SITE_URL = 'https://portu142.github.io/LocalizadorCafeterias/';
 
 /** Hosts que el frontend consulta directamente en el modo demo (sin API). */
 const OSM_CONNECT_SRC = [
