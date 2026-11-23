@@ -1,9 +1,3 @@
----
-created: 2026-11-23T11:45
-updated: 2026-11-23T12:03
----
-<div align="center">
-
 # ☕ Localizador de Cafés
 
 **Encuentra cafeterías cerca de ti, consulta su carta y comparte tu opinión.**
