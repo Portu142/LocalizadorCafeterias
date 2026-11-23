@@ -387,6 +387,7 @@ Para activar GitHub Pages en un fork, ve a **Settings → Pages** y elige **GitH
 
 ## Limitaciones conocidas
 
+- **La demo en vivo (GitHub Pages) no tiene backend**: es un build estático que solo consulta OpenStreetMap. Allí no funcionan las cuentas, la carta colaborativa, la subida de fotos, la moderación ni el panel `/admin`; para probarlos hay que ejecutar la API + PostgreSQL en local o compartirla por el túnel.
 - **OpenStreetMap no publica cartas**: las cafeterías sin carta de la comunidad enlazan a la web del local o a su ficha de Google Maps.
 - **Los datos de ejemplo cubren Madrid**. En otras ciudades se muestran las cafeterías de OpenStreetMap, que se incorporan a la base de datos cuando alguien aporta algo.
 - **La presencia «En vivo» vive en memoria**: se reinicia con la API y no está pensada para varias instancias.
