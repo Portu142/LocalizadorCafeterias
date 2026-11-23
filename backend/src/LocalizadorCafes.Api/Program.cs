@@ -135,6 +135,14 @@ builder.Services.AddAuthorization(options =>
 // Panel de administración: páginas HTML servidas por la propia API en /admin.
 // Todo /admin exige el rol Admin salvo la pantalla de inicio de sesión. Los
 // formularios de Razor Pages llevan token antifalsificación automáticamente.
+// El token antifalsificación del panel también viaja en una cookie: Secure si
+// la visita es HTTPS (por defecto ASP.NET no la marca nunca).
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.HttpOnly = true;
+});
+
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AuthorizeFolder("/Admin", AdminAccess.Role);
@@ -279,16 +287,22 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-if (builder.Configuration.GetValue<bool>("ReverseProxy:TrustForwardedHeaders"))
+// Cabeceras X-Forwarded-*: por defecto solo se aceptan de un proxy en la propia
+// máquina (el túnel de Cloudflare pasa por `vite preview` en localhost). Así la
+// API sabe que el visitante usa HTTPS y marca la cookie de sesión como Secure.
+// Con ReverseProxy:TrustForwardedHeaders (Docker, otro host) se confía en
+// cualquier proxy de la red interna.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+    if (builder.Configuration.GetValue<bool>("ReverseProxy:TrustForwardedHeaders"))
     {
-        options.ForwardedHeaders =
-            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
         options.KnownNetworks.Clear();
         options.KnownProxies.Clear();
-    });
-}
+    }
+});
 
 var healthChecks = builder.Services.AddHealthChecks();
 
@@ -309,10 +323,7 @@ var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 
-if (app.Configuration.GetValue<bool>("ReverseProxy:TrustForwardedHeaders"))
-{
-    app.UseForwardedHeaders();
-}
+app.UseForwardedHeaders();
 
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();

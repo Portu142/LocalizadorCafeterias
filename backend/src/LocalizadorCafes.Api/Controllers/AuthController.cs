@@ -151,18 +151,26 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Usuario con sesión iniciada, o 401 si no hay sesión.</summary>
-    [Authorize]
+    /// <summary>
+    /// Usuario con sesión iniciada, o 204 sin contenido si no hay sesión. No es
+    /// un error: la web lo consulta en cada visita, también sin cuenta.
+    /// </summary>
     [HttpGet("me")]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult<UserDto>> Me()
     {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return NoContent();
+        }
+
         var user = await _userManager.GetUserAsync(User);
         if (user is null || await _userManager.IsLockedOutAsync(user))
         {
+            // Cuenta borrada o suspendida: se cierra la sesión que quedara abierta.
             await _signInManager.SignOutAsync();
-            return Unauthorized();
+            return NoContent();
         }
 
         return Ok(await ToDtoAsync(user));

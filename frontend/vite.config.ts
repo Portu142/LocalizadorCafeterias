@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, type ProxyOptions } from 'vite';
 
 const DEFAULT_SITE_URL = 'https://example.github.io/localizador-cafes/';
 
@@ -38,6 +38,31 @@ function contentSecurityPolicy(apiOrigin: string | null) {
   ].join('; ');
 }
 
+/**
+ * Proxy de `vite preview` hacia la API para el build del túnel. Cloudflare
+ * indica en `Cf-Visitor` si el visitante usa HTTPS y en `CF-Connecting-IP` su
+ * dirección: se reenvían como X-Forwarded-Proto/For para que la API marque la
+ * cookie de sesión como Secure y aplique los límites por visitante. La API solo
+ * acepta esas cabeceras cuando la petición llega desde la propia máquina.
+ */
+const apiProxy: ProxyOptions = {
+  target: 'http://localhost:5067',
+  changeOrigin: true,
+  configure: (proxy) => {
+    proxy.on('proxyReq', (proxyReq, request) => {
+      const visitor = request.headers['cf-visitor'];
+      const clientIp = request.headers['cf-connecting-ip'];
+
+      if (typeof visitor === 'string' && visitor.includes('"https"')) {
+        proxyReq.setHeader('X-Forwarded-Proto', 'https');
+      }
+      if (typeof clientIp === 'string') {
+        proxyReq.setHeader('X-Forwarded-For', clientIp);
+      }
+    });
+  },
+};
+
 function apiOriginOf(value: string | undefined): string | null {
   if (!value?.trim()) {
     return null;
@@ -67,11 +92,20 @@ export default defineConfig(({ mode }) => {
     // cuando se compila con VITE_API_URL=same-origin.
     preview: {
       allowedHosts: ['.trycloudflare.com'],
+      // Mismas cabeceras de seguridad que nginx (Docker) para el build que se
+      // comparte por el túnel. La CSP va en un <meta> del propio index.html.
+      headers: {
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'geolocation=(self), microphone=(), camera=(), payment=()',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+      },
       proxy: {
-        '/api': { target: 'http://localhost:5067', changeOrigin: true },
-        '/health': { target: 'http://localhost:5067', changeOrigin: true },
+        '/api': apiProxy,
+        '/health': apiProxy,
         // Panel de administración del backend (páginas HTML en /admin).
-        '/admin': { target: 'http://localhost:5067', changeOrigin: true },
+        '/admin': apiProxy,
       },
     },
     plugins: [
@@ -112,7 +146,8 @@ export default defineConfig(({ mode }) => {
 
           writeFileSync(
             resolve(dist, 'robots.txt'),
-            `User-agent: *\nAllow: /\n\nSitemap: ${siteUrl}sitemap.xml\n`,
+            // El panel de administración y la API no deben indexarse.
+            `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n\nSitemap: ${siteUrl}sitemap.xml\n`,
             'utf8',
           );
         },

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { API_URL, USE_API } from '../config';
+import { randomId } from '../lib/utils';
 
 const VISITOR_KEY = 'lc_visita';
 const INTERVAL_MS = 30_000;
@@ -16,12 +17,12 @@ function visitorId(): string {
       return stored;
     }
 
-    const id = crypto.randomUUID();
+    const id = randomId();
     sessionStorage.setItem(VISITOR_KEY, id);
     return id;
   } catch {
     // Sin almacenamiento (modo privado estricto): un id por carga de página.
-    return crypto.randomUUID();
+    return randomId();
   }
 }
 
@@ -52,7 +53,9 @@ export function usePresence(cafeId: string | null, cafeName: string | null) {
       }).catch(() => undefined);
     };
 
-    beat();
+    // Pequeña espera: al cargar, la cafetería seleccionada cambia varias veces
+    // en un segundo y sin ella se enviaban varios latidos seguidos.
+    const first = window.setTimeout(beat, 1_000);
     const timer = window.setInterval(beat, INTERVAL_MS);
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -62,6 +65,7 @@ export function usePresence(cafeId: string | null, cafeName: string | null) {
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
+      window.clearTimeout(first);
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };

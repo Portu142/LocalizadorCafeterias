@@ -1,7 +1,6 @@
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
-import { AuthDialog, type AuthMode } from './components/AuthDialog';
+import type { AuthMode } from './components/AuthDialog';
 import { CafeDetail } from './components/CafeDetail';
-import { MyReviewsDialog } from './components/MyReviewsDialog';
 import { CafeList } from './components/CafeList';
 import { DemoNotice } from './components/DemoNotice';
 import { Footer } from './components/Footer';
@@ -22,6 +21,14 @@ import { isOpenAt } from './lib/openingHours';
 
 const MapView = lazy(() =>
   import('./components/MapView').then((module) => ({ default: module.MapView })),
+);
+
+// Ventanas de cuenta: solo se descargan cuando se abren por primera vez.
+const AuthDialog = lazy(() =>
+  import('./components/AuthDialog').then((module) => ({ default: module.AuthDialog })),
+);
+const MyReviewsDialog = lazy(() =>
+  import('./components/MyReviewsDialog').then((module) => ({ default: module.MyReviewsDialog })),
 );
 
 const ALL_NEIGHBORHOODS = 'Todas';
@@ -375,7 +382,9 @@ function App() {
                   ? 'Todavía no tienes favoritos.'
                   : locationCausedEmpty
                     ? 'No hay cafeterías cerca de ti.'
-                    : 'No hay resultados con esos filtros.'
+                    : search.trim() && serviceFilters.size === 0 && neighborhood === ALL_NEIGHBORHOODS
+                      ? `Ninguna cafetería coincide con «${search.trim()}».`
+                      : 'No hay resultados con esos filtros.'
               }
               emptyDescription={
                 showFavorites
@@ -451,12 +460,18 @@ function App() {
 
       <Footer />
 
-      <AuthDialog
-        mode={authMode}
-        onModeChange={setAuthMode}
-        onClose={() => setAuthMode(null)}
-      />
-      <MyReviewsDialog open={myReviewsOpen} onClose={() => setMyReviewsOpen(false)} />
+      <Suspense fallback={null}>
+        {authMode !== null && (
+          <AuthDialog
+            mode={authMode}
+            onModeChange={setAuthMode}
+            onClose={() => setAuthMode(null)}
+          />
+        )}
+        {myReviewsOpen && (
+          <MyReviewsDialog open={myReviewsOpen} onClose={() => setMyReviewsOpen(false)} />
+        )}
+      </Suspense>
     </div>
   );
 }

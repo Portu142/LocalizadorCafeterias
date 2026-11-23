@@ -1,4 +1,5 @@
 import { API_URL, USE_API } from '../config';
+import { randomId } from '../lib/utils';
 import { distanceKm, type Coordinates } from '../lib/geo';
 import { queryPhotonCafes } from './photon';
 import { enrichWithOsmTags, queryCafeById, queryOverpassNearby } from './overpass';
@@ -293,7 +294,7 @@ export async function createReview(
   }
 
   const review: Review = {
-    id: crypto.randomUUID(),
+    id: randomId(),
     author: requestBody.author.trim(),
     rating: requestBody.rating,
     comment: requestBody.comment.trim(),
@@ -323,7 +324,8 @@ export async function fetchCurrentUser(): Promise<User | null> {
   }
 
   try {
-    return await request<User>('/api/auth/me');
+    // 204 (sin sesión) llega como undefined.
+    return (await request<User | undefined>('/api/auth/me')) ?? null;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       return null;
