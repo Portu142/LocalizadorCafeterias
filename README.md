@@ -32,6 +32,7 @@ El objetivo era construir algo más que una landing: una aplicación real con se
 - **Filtros combinables**: «Abierto ahora» (interpreta el horario de OpenStreetMap o el de la API) y servicios como wifi, terraza, enchufes, accesible, para llevar, mascotas u opciones veganas.
 - **Servicios y fotos** en la ficha: etiquetas con icono y fotos con autor y licencia (Wikimedia Commons o subidas por la comunidad).
 - **Carta**: si no hay menú publicado, enlace directo a la carta o a la web del local (OpenStreetMap) o a su ficha en Google Maps, donde está la pestaña «Carta».
+- **Carta de la comunidad** (con la API): cualquier usuario con sesión puede añadir platos y precios a cualquier café, también a los de OpenStreetMap, que se guardan en la base de datos al recibir su primer plato. Con la API, la lista mezcla los cafés guardados y los de OpenStreetMap sin duplicados.
 - **Cuentas** (con la API): registro e inicio de sesión con ASP.NET Identity y cookie HttpOnly; las reseñas se firman con el nombre de la cuenta, se pueden subir fotos y hay una vista «Mis reseñas».
 - Mapa Leaflet/OpenStreetMap con marcadores sincronizados con el listado, punto azul con tu posición y encuadre automático de los resultados.
 - Ficha de cafetería: distancia a tu posición, horario, teléfono, enlace a Google Maps, menú y reseñas.
@@ -264,32 +265,39 @@ El servicio `db` espera a estar sano antes de arrancar la API; `Database__AutoMi
 | `POST` | `/api/cafes/{id}/reviews` | Añade una reseña. **Requiere sesión**; el autor es el nombre de la cuenta. Limitado a 8 peticiones/minuto por IP. |
 | `POST` | `/api/cafes/{id}/photos` | Sube una foto (`multipart/form-data`, campo `photo`; JPEG, PNG o WebP de hasta 5 MB, validada por su contenido). Requiere sesión; 20 por hora. |
 | `GET` | `/api/photos/{archivo}` | Sirve una foto subida. |
-| `POST` | `/api/auth/register` | Crea una cuenta (`email`, `password`, `displayName`) e inicia sesión. |
-| `POST` | `/api/auth/login` | Inicia sesión. Bloqueo de 5 minutos tras 5 intentos fallidos y 10 peticiones/minuto por IP. |
-| `POST` | `/api/auth/logout` | Cierra la sesión. |
-| `GET` | `/api/auth/me` | Usuario actual o `401`. |
-| `GET` | `/api/me/reviews` | Reseñas del usuario actual. |
-| `GET` | `/health` | Estado de la API y la base de datos. |
+| `POST` | `/api/cafes/import` | Guarda un café de OpenStreetMap (`{"osmId":"node/123"}`) o devuelve el ya guardado. El servidor descarga sus datos de la API de OSM. Requiere sesión; 30 aportaciones por hora. |
+| `POST` | `/api/cafes/{id}/menu` | Añade un plato a la carta (`name`, `price` de 0,01 a 500 €). Requiere sesión. |
+| `DELETE` | `/api/cafes/{id}/menu/{platoId}` | Borra un plato propio si nadie más lo ha puntuado. |
+| `GET` | `/api/admin/pending` | **Admin.** Platos y fotos pendientes de revisión. |
+| `POST` | `/api/admin/dishes/{id}/approve` · `/reject` | **Admin.** Aprueba o rechaza un plato. |
+| `POST` | `/api/admin/photos/{id}/approve` · `/reject` | **Admin.** Aprueba o rechaza una foto. |
+| `GET` | `/api/admin/reviews` | **Admin.** Últimas reseñas. |
+| `DELETE` | `/api/admin/reviews/{id}` | **Admin.** Borra una reseña. |
 
-Ejemplos:
+### Panel de administración
+
+El backend sirve un panel web en **`/admin`** (por ejemplo `http://localhost:5067/admin`, o `/admin` en el túnel), con su propio inicio de sesión:
+
+- **En vivo**: personas usando la web ahora mismo (con y sin cuenta), visitantes por minuto de la última media hora, usuarios conectados y cafeterías que se están viendo; se actualiza sola cada 5 s. La web envía un latido (`POST /api/presence`) cada 30 s con la pestaña visible; los anónimos se identifican con un número aleatorio por sesión del navegador (sessionStorage), no se guardan IPs y todo vive en memoria y caduca en minutos.
+- **Resumen**: pendientes de revisar, totales, gráficas semanales (cuentas, reseñas, platos y fotos de las últimas 8 semanas, con tabla de datos) y últimas acciones.
+- **Platos** y **Fotos**: pestañas por estado (pendientes, publicados, rechazados, todos), búsqueda y paginación; aprobar, rechazar, ocultar, restaurar, editar nombre y precio, y borrar definitivamente (las fotos subidas se borran también del disco).
+- **Reseñas**: búsqueda por texto, autor o cafetería y borrado.
+- **Cafeterías**: las guardadas en la base de datos (las de ejemplo y las de OpenStreetMap que han recibido una reseña, foto o plato; con la API, aportar algo a un café de OSM lo guarda automáticamente), con búsqueda y, por cafetería, edición de datos y servicios, su carta, fotos y reseñas, y borrado.
+- **Usuarios**: búsqueda, dar o quitar el rol de administrador, **suspender y reactivar** cuentas (una cuenta suspendida no puede iniciar sesión ni publicar y sus sesiones abiertas caducan en menos de un minuto), borrar cuentas (su contenido se conserva sin vincular) y ficha con todo lo que ha aportado.
+- **Actividad**: pestaña **Comunidad** con lo que hacen los usuarios (reseñas, platos propuestos, fotos, cafeterías de OpenStreetMap guardadas y cuentas nuevas) y pestaña **Administración** con el registro de acciones del panel (quién, qué y cuándo), filtrable por tipo; ese registro no se edita ni se borra.
+- **Contraseña**: cambio de la contraseña propia.
+
+Los platos y las fotos que envían los usuarios quedan **pendientes** (solo los ve su autor, con la etiqueta «Pendiente de revisión») hasta que un administrador los aprueba. Las reseñas se publican al momento.
+
+**Administrador inicial**: si al arrancar no hay ningún administrador, la API crea `admin@localizador.local` con una contraseña aleatoria y guarda las credenciales en `backend/src/LocalizadorCafes.Api/App_Data/admin-inicial.txt` (excluido de git; la contraseña nunca se escribe en el log). Entra, cámbiala en «Contraseña» y borra el archivo. El email se cambia con `Admin:InitialEmail` y la creación se desactiva con `Admin:CreateInitialAdmin=false`.
+
+Para hacer administradora otra cuenta: desde «Usuarios» en el panel, o añadiendo su email a `Admin:Emails` sin guardarlo en el repositorio:
 
 ```bash
-curl "http://localhost:5067/api/cafes?search=malasa%C3%B1a"
-curl "http://localhost:5067/api/cafes?lat=40.4168&lng=-3.7038&radiusKm=3"
-curl -X POST "http://localhost:5067/api/cafes/11111111-1111-1111-1111-111111111111/reviews" \
-  -H "Content-Type: application/json" \
-  -b cookies.txt -c cookies.txt \n  -d '{"rating":5,"comment":"Un café excelente y un ambiente muy tranquilo.","itemRatings":[{"menuItemId":"<id-del-plato>","score":5}]}'
+dotnet user-secrets set "Admin:Emails:0" "tu-email@ejemplo.com" --project backend/src/LocalizadorCafes.Api
 ```
 
-La sesión viaja en la cookie HttpOnly `lc_session` (`SameSite=Lax`), así que el frontend nunca maneja tokens. Las fotos subidas y las claves que cifran la cookie se guardan en `App_Data/` (configurable con `Storage__AppDataPath`; en Docker, el volumen `apidata` montado en `/data`).
-
-Hay dos `DbContext` (el de PostgreSQL y uno en memoria solo para las cuentas del modo demo), así que las migraciones se crean indicando el contexto:
-
-```bash
-dotnet ef migrations add <Nombre> --context AppDbContext --project backend/src/LocalizadorCafes.Infrastructure --startup-project backend/src/LocalizadorCafes.Api --output-dir Persistence/Migrations
-```
-
-La validación devuelve `400` con `ValidationProblemDetails`; los parámetros geográficos se comprueban antes de llegar a la base de datos.
+En Docker o producción se usa la variable `Admin__Emails__0`. Seguridad del panel: solo cuentas con rol Admin, formularios con token antifalsificación, CSP estricta sin JavaScript en línea, `X-Frame-Options: DENY`, sin caché y límite de intentos de inicio de sesión.
 
 ### Datos de ejemplo
 

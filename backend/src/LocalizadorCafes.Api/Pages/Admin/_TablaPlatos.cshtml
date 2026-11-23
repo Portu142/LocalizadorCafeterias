@@ -1,0 +1,82 @@
+@using LocalizadorCafes.Domain.Entities
+@model DishTableModel
+
+@if (Model.Dishes.Count == 0)
+{
+    <p class="vacio">No hay platos en esta vista.</p>
+}
+else
+{
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th scope="col">Plato y precio</th>
+                @if (Model.ShowCafe)
+                {
+                    <th scope="col">Cafetería</th>
+                }
+                <th scope="col">Estado</th>
+                <th scope="col">Alta</th>
+                <th scope="col"><span class="oculto">Acciones</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var dish in Model.Dishes)
+            {
+                var formId = "plato-" + dish.Id.ToString("N");
+                <tr>
+                    <td data-label="Plato">
+                        <form id="@formId" method="post" asp-page="/Admin/Acciones" asp-page-handler="EditDish" class="edicion-plato">
+                            <input type="hidden" name="id" value="@dish.Id" />
+                            <input type="hidden" name="volver" value="@Model.ReturnUrl" />
+                            <label class="oculto" for="@(formId)-nombre">Nombre del plato</label>
+                            <input id="@(formId)-nombre" name="name" value="@dish.Name" maxlength="120" required />
+                            <label class="oculto" for="@(formId)-precio">Precio en euros</label>
+                            <input id="@(formId)-precio" name="price" value="@dish.Price.ToString("0.00", System.Globalization.CultureInfo.GetCultureInfo("es-ES"))" inputmode="decimal" maxlength="6" class="precio" required />
+                            <button type="submit" class="boton secundario pequeno">Guardar</button>
+                        </form>
+                    </td>
+                    @if (Model.ShowCafe)
+                    {
+                        <td data-label="Cafetería"><a href="/admin/cafes/@dish.CafeId">@dish.CafeName</a></td>
+                    }
+                    <td data-label="Estado"><span class="@AdminPageModel.StatusClass(dish.Status)">@AdminPageModel.StatusLabel(dish.Status)</span></td>
+                    <td data-label="Alta">
+                        @AdminPageModel.Date(dish.CreatedAt)
+                        @if (dish.AddedByUserId is Guid userId)
+                        {
+                            <br /><a class="pequeno" href="/admin/usuarios/@userId">ver autor</a>
+                        }
+                    </td>
+                    <td class="acciones">
+                        @if (dish.Status != ModerationStatus.Approved)
+                        {
+                            <form method="post" asp-page="/Admin/Acciones" asp-page-handler="ApproveDish">
+                                <input type="hidden" name="id" value="@dish.Id" />
+                                <input type="hidden" name="name" value="@dish.Name" />
+                                <input type="hidden" name="volver" value="@Model.ReturnUrl" />
+                                <button type="submit" class="boton aprobar">@(dish.Status == ModerationStatus.Rejected ? "Restaurar" : "Aprobar")</button>
+                            </form>
+                        }
+                        @if (dish.Status != ModerationStatus.Rejected)
+                        {
+                            <form method="post" asp-page="/Admin/Acciones" asp-page-handler="RejectDish">
+                                <input type="hidden" name="id" value="@dish.Id" />
+                                <input type="hidden" name="name" value="@dish.Name" />
+                                <input type="hidden" name="volver" value="@Model.ReturnUrl" />
+                                <button type="submit" class="boton secundario">@(dish.Status == ModerationStatus.Approved ? "Ocultar" : "Rechazar")</button>
+                            </form>
+                        }
+                        <form method="post" asp-page="/Admin/Acciones" asp-page-handler="DeleteDish"
+                              data-confirmar="¿Borrar «@dish.Name» definitivamente? También se borran sus puntuaciones.">
+                            <input type="hidden" name="id" value="@dish.Id" />
+                            <input type="hidden" name="name" value="@dish.Name" />
+                            <input type="hidden" name="volver" value="@Model.ReturnUrl" />
+                            <button type="submit" class="boton rechazar">Borrar</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

@@ -1,0 +1,88 @@
+@page "/admin"
+@model IndexModel
+@{
+    ViewData["Title"] = "Resumen";
+    (string, string, IReadOnlyList<LocalizadorCafes.Application.Admin.WeeklyCount>) users = ("Cuentas nuevas", "cuentas", Model.NewUsers);
+    (string, string, IReadOnlyList<LocalizadorCafes.Application.Admin.WeeklyCount>) reviews = ("Reseñas", "reseñas", Model.NewReviews);
+    (string, string, IReadOnlyList<LocalizadorCafes.Application.Admin.WeeklyCount>) dishes = ("Platos propuestos", "platos", Model.NewDishes);
+    (string, string, IReadOnlyList<LocalizadorCafes.Application.Admin.WeeklyCount>) photos = ("Fotos subidas", "fotos", Model.NewPhotos);
+}
+<h1>Resumen</h1>
+<p class="suave">Los platos y fotos que envía la comunidad no se publican hasta que los apruebas.</p>
+
+<div class="rejilla">
+    <a class="tarjeta dato @(Model.PendingDishCount > 0 ? "pendiente" : "")" href="/admin/platos">
+        <span class="numero">@Model.PendingDishCount</span>
+        <span>platos por revisar</span>
+    </a>
+    <a class="tarjeta dato @(Model.PendingPhotoCount > 0 ? "pendiente" : "")" href="/admin/fotos">
+        <span class="numero">@Model.PendingPhotoCount</span>
+        <span>fotos por revisar</span>
+    </a>
+    <a class="tarjeta dato" href="/admin/cafes">
+        <span class="numero">@Model.CafeCount</span>
+        <span>cafeterías en la base de datos</span>
+    </a>
+    <a class="tarjeta dato" href="/admin/usuarios">
+        <span class="numero">@Model.UserCount</span>
+        <span>cuentas registradas</span>
+    </a>
+</div>
+
+<h2 class="subtitulo">Actividad de la comunidad por semana</h2>
+<div class="rejilla graficas">
+    <partial name="_GraficaSemanal" model="users" />
+    <partial name="_GraficaSemanal" model="reviews" />
+    <partial name="_GraficaSemanal" model="dishes" />
+    <partial name="_GraficaSemanal" model="photos" />
+</div>
+
+<h2 class="subtitulo">Última actividad de la comunidad</h2>
+@if (Model.RecentCommunity.Count == 0)
+{
+    <p class="vacio">Todavía no hay actividad de la comunidad.</p>
+}
+else
+{
+    <ul class="lista actividad">
+        @foreach (var item in Model.RecentCommunity)
+        {
+            <li>
+                <span class="suave pequeno">@AdminPageModel.Date(item.When)</span>
+                <strong>@ActividadModel.KindLabel(item.Kind)</strong>
+                @if (item.Status is LocalizadorCafes.Domain.Entities.ModerationStatus status)
+                {
+                    <span class="@AdminPageModel.StatusClass(status)">@AdminPageModel.StatusLabel(status)</span>
+                }
+                @item.What
+                @if (item.CafeId is Guid cafeId)
+                {
+                    <span class="suave">en</span> <a href="/admin/cafes/@cafeId">@item.CafeName</a>
+                }
+            </li>
+        }
+    </ul>
+    <p><a href="/admin/actividad">Ver toda la actividad de la comunidad →</a></p>
+}
+
+<h2 class="subtitulo">Últimas acciones del panel</h2>
+@if (Model.RecentActions.Count == 0)
+{
+    <p class="vacio">Todavía no hay acciones registradas.</p>
+}
+else
+{
+    <ul class="lista actividad">
+        @foreach (var entry in Model.RecentActions)
+        {
+            <li>
+                <span class="suave pequeno">@AdminPageModel.Date(entry.CreatedAt)</span>
+                <strong>@entry.Action</strong>
+                <span class="etiqueta">@entry.TargetType</span>
+                @entry.Details
+                <span class="suave pequeno">· @entry.AdminName</span>
+            </li>
+        }
+    </ul>
+    <p><a href="/admin/actividad?vista=admin">Ver todo el registro de administración →</a></p>
+}

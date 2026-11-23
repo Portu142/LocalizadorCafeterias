@@ -25,6 +25,53 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("LocalizadorCafes.Domain.Entities.AdminAuditEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("AdminName")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<Guid?>("AdminUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("TargetType");
+
+                    b.ToTable("admin_audit_log", (string)null);
+                });
+
             modelBuilder.Entity("LocalizadorCafes.Domain.Entities.Cafe", b =>
                 {
                     b.Property<Guid>("Id")
@@ -58,6 +105,10 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<string>("OsmId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<string>("Phone")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -77,6 +128,10 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
                     b.HasIndex("Location");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Location"), "GIST");
+
+                    b.HasIndex("OsmId")
+                        .IsUnique()
+                        .HasFilter("\"OsmId\" IS NOT NULL");
 
                     b.ToTable("cafes", (string)null);
                 });
@@ -108,6 +163,11 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -123,6 +183,8 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CafeId");
 
+                    b.HasIndex("Status");
+
                     b.HasIndex("UploadedByUserId");
 
                     b.ToTable("cafe_photos", (string)null);
@@ -132,6 +194,9 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AddedByUserId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("CafeId")
@@ -149,12 +214,21 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AddedByUserId");
+
                     b.HasIndex("CafeId");
+
+                    b.HasIndex("Status");
 
                     b.ToTable("menu_items", (string)null);
                 });
@@ -457,6 +531,11 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("LocalizadorCafes.Domain.Entities.MenuItem", b =>
                 {
+                    b.HasOne("LocalizadorCafes.Infrastructure.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("AddedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("LocalizadorCafes.Domain.Entities.Cafe", "Cafe")
                         .WithMany("Menu")
                         .HasForeignKey("CafeId")

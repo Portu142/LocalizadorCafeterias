@@ -1,5 +1,6 @@
 using LocalizadorCafes.Application.Common.Interfaces;
 using LocalizadorCafes.Infrastructure.Identity;
+using LocalizadorCafes.Infrastructure.Osm;
 using LocalizadorCafes.Infrastructure.Storage;
 using Microsoft.AspNetCore.Identity;
 using LocalizadorCafes.Infrastructure.Persistence;
@@ -23,11 +24,22 @@ public static class DependencyInjection
             uploadsPath ?? Path.Combine(AppContext.BaseDirectory, "App_Data", "uploads")));
         services.AddSingleton<IPhotoStorage>(provider => provider.GetRequiredService<LocalPhotoStorage>());
 
+        // OpenStreetMap exige identificar la aplicación con un User-Agent propio.
+        services.AddHttpClient<IOsmCafeSource, OsmCafeSource>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.openstreetmap.org/api/0.6/");
+            client.Timeout = TimeSpan.FromSeconds(10);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("LocalizadorCafes/1.0");
+        });
+
         if (useInMemory)
         {
             // Sin PostgreSQL la API sigue siendo funcional con datos de ejemplo.
-            services.AddSingleton<ICafeRepository>(_ =>
-                new InMemoryCafeRepository(DemoData.CreateCafes()));
+            // Una sola instancia sirve a la web y al panel de administración.
+            var memory = new InMemoryCafeRepository(DemoData.CreateCafes());
+            services.AddSingleton<ICafeRepository>(memory);
+            services.AddSingleton<IAdminRepository>(memory);
+            services.AddSingleton<IAuditLog, InMemoryAuditLog>();
 
             return services;
         }
@@ -55,6 +67,8 @@ public static class DependencyInjection
                 }));
 
         services.AddScoped<ICafeRepository, CafeRepository>();
+        services.AddScoped<IAdminRepository, AdminRepository>();
+        services.AddScoped<IAuditLog, EfAuditLog>();
 
         return services;
     }

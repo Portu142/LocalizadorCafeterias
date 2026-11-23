@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, LogOut, MessageSquare, UserRound } from 'lucide-react';
-import { USE_API } from '../config';
+import { ChevronDown, LogOut, MessageSquare, ShieldCheck, UserRound } from 'lucide-react';
+import { API_URL, USE_API } from '../config';
 import { useCurrentUser, useLogout } from '../hooks/useAuth';
 
 type AccountMenuProps = {
@@ -89,6 +89,20 @@ export function AccountMenu({ onLogin, onMyReviews }: AccountMenuProps) {
             <MessageSquare className="h-4 w-4" aria-hidden="true" />
             Mis reseñas
           </button>
+          {/* El panel es una página del backend (/admin) con su propio inicio de sesión. */}
+          {user.isAdmin && (
+            <a
+              href={`${API_URL}/admin`}
+              target="_blank"
+              rel="noopener"
+              className={itemClass}
+              onClick={() => setOpen(false)}
+            >
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              Panel de administración
+              <span className="sr-only">(se abre en una pestaña nueva)</span>
+            </a>
+          )}
           <button
             type="button"
             className={itemClass}

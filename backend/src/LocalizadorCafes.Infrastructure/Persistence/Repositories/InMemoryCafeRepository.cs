@@ -7,7 +7,7 @@ namespace LocalizadorCafes.Infrastructure.Persistence.Repositories;
 /// Repositorio en memoria que permite arrancar la API sin PostgreSQL (modo
 /// demo). Las reseñas creadas se pierden al reiniciar el proceso.
 /// </summary>
-public sealed class InMemoryCafeRepository : ICafeRepository
+public sealed partial class InMemoryCafeRepository : ICafeRepository, IAdminRepository
 {
     private const double EarthRadiusKm = 6371;
     private readonly object _sync = new();
@@ -91,6 +91,141 @@ public sealed class InMemoryCafeRepository : ICafeRepository
             }
 
             return Task.CompletedTask;
+        }
+    }
+
+    public Task<Cafe?> GetByOsmIdAsync(string osmId, CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            return Task.FromResult(_cafes.FirstOrDefault(cafe => cafe.OsmId == osmId));
+        }
+    }
+
+    public Task AddCafeAsync(Cafe cafe, CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            _cafes.Add(cafe);
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task AddMenuItemAsync(MenuItem item, CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            var cafe = _cafes.FirstOrDefault(entry => entry.Id == item.CafeId);
+            if (cafe is not null)
+            {
+                item.Cafe = cafe;
+                cafe.Menu.Add(item);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task RemoveMenuItemAsync(MenuItem item, CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            var cafe = _cafes.FirstOrDefault(entry => entry.Id == item.CafeId);
+            if (cafe is not null)
+            {
+                cafe.Menu.Remove(item);
+                foreach (var review in cafe.Reviews)
+                {
+                    foreach (var rating in review.MenuItemRatings.Where(rating => rating.MenuItemId == item.Id).ToList())
+                    {
+                        review.MenuItemRatings.Remove(rating);
+                    }
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task<IReadOnlyList<MenuItem>> GetPendingMenuItemsAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            IReadOnlyList<MenuItem> result = _cafes
+                .SelectMany(cafe => cafe.Menu.Where(item => item.Status == ModerationStatus.Pending)
+                    .Select(item => { item.Cafe = cafe; return item; }))
+                .OrderBy(item => item.CreatedAt)
+                .ToList();
+            return Task.FromResult(result);
+        }
+    }
+
+    public Task<IReadOnlyList<CafePhoto>> GetPendingPhotosAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            IReadOnlyList<CafePhoto> result = _cafes
+                .SelectMany(cafe => cafe.Photos.Where(photo => photo.Status == ModerationStatus.Pending)
+                    .Select(photo => { photo.Cafe = cafe; return photo; }))
+                .OrderBy(photo => photo.CreatedAt)
+                .ToList();
+            return Task.FromResult(result);
+        }
+    }
+
+    public Task<bool> SetMenuItemStatusAsync(Guid id, ModerationStatus status, CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            var item = _cafes.SelectMany(cafe => cafe.Menu).FirstOrDefault(entry => entry.Id == id);
+            if (item is not null)
+            {
+                item.Status = status;
+            }
+            return Task.FromResult(item is not null);
+        }
+    }
+
+    public Task<bool> SetPhotoStatusAsync(Guid id, ModerationStatus status, CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            var photo = _cafes.SelectMany(cafe => cafe.Photos).FirstOrDefault(entry => entry.Id == id);
+            if (photo is not null)
+            {
+                photo.Status = status;
+            }
+            return Task.FromResult(photo is not null);
+        }
+    }
+
+    public Task<IReadOnlyList<(Review Review, Cafe Cafe)>> GetRecentReviewsAsync(int take, CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            IReadOnlyList<(Review Review, Cafe Cafe)> result = _cafes
+                .SelectMany(cafe => cafe.Reviews.Select(review => (review, cafe)))
+                .OrderByDescending(item => item.review.CreatedAt)
+                .Take(take)
+                .ToList();
+            return Task.FromResult(result);
+        }
+    }
+
+    public Task<bool> DeleteReviewAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        lock (_sync)
+        {
+            foreach (var cafe in _cafes)
+            {
+                var review = cafe.Reviews.FirstOrDefault(entry => entry.Id == id);
+                if (review is not null)
+                {
+                    cafe.Reviews.Remove(review);
+                    return Task.FromResult(true);
+                }
+            }
+            return Task.FromResult(false);
         }
     }
 

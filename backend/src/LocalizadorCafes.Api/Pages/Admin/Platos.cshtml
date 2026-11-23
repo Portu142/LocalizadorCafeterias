@@ -1,0 +1,24 @@
+@page "/admin/platos"
+@model PlatosModel
+@{
+    ViewData["Title"] = "Platos";
+    (string, Func<string, string>) filtro = (Model.EstadoActual, value => Model.WithQuery("estado", value));
+}
+<h1>Platos</h1>
+<p class="suave">Platos de todas las cartas. Los que propone la comunidad empiezan como pendientes. Puedes editar nombre y precio, ocultar, restaurar o borrar.</p>
+
+<partial name="_FiltroEstado" model="filtro" />
+
+<form method="get" class="buscador" role="search">
+    <input type="hidden" name="estado" value="@Model.EstadoActual" />
+    <label for="q" class="oculto">Buscar platos</label>
+    <input id="q" name="q" value="@Model.Query" type="search" placeholder="Buscar por plato o cafetería…" maxlength="100" />
+    <button type="submit" class="boton secundario">Buscar</button>
+    @if (!string.IsNullOrEmpty(Model.Query))
+    {
+        <a href="@Model.WithQuery("q", null)">Quitar búsqueda</a>
+    }
+</form>
+
+<partial name="_TablaPlatos" model="new DishTableModel(Model.Result.Items, Model.CurrentUrl)" />
+<partial name="_Paginacion" model="new PagerModel(Model.Result.Page, Model.Result.TotalPages, Model.Result.Total, Model.PageUrl)" />

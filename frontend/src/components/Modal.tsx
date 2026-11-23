@@ -6,6 +6,8 @@ type ModalProps = {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  /** «wide» para contenido con tablas o rejillas (panel de administración). */
+  size?: 'normal' | 'wide';
 };
 
 /**
@@ -13,7 +15,7 @@ type ModalProps = {
  * de atrapar el foco, cerrar con Escape y devolver el foco al botón que la
  * abrió, sin dependencias extra.
  */
-export function Modal({ open, title, onClose, children }: ModalProps) {
+export function Modal({ open, title, onClose, children, size = 'normal' }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export function Modal({ open, title, onClose, children }: ModalProps) {
           onClose();
         }
       }}
-      className="m-auto w-[min(92vw,26rem)] rounded-3xl border border-coffee-100 bg-cream-50 p-0 text-coffee-950 shadow-soft backdrop:bg-coffee-950/40 backdrop:backdrop-blur-sm"
+      className={`m-auto ${size === 'wide' ? 'w-[min(94vw,52rem)]' : 'w-[min(92vw,26rem)]'} rounded-3xl border border-coffee-100 bg-cream-50 p-0 text-coffee-950 shadow-soft backdrop:bg-coffee-950/40 backdrop:backdrop-blur-sm`}
     >
       {open && (
         <div className="p-6">

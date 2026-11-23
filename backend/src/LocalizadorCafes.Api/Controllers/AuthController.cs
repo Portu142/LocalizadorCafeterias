@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using LocalizadorCafes.Api.Auth;
 using LocalizadorCafes.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -17,11 +18,19 @@ public class AuthController : ControllerBase
 {
     private readonly UserManager<AppUser> _userManager;
     private readonly SignInManager<AppUser> _signInManager;
+    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+    private readonly AdminAccess _adminAccess;
 
-    public AuthController(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager)
+    public AuthController(
+        UserManager<AppUser> userManager,
+        SignInManager<AppUser> signInManager,
+        RoleManager<IdentityRole<Guid>> roleManager,
+        AdminAccess adminAccess)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _roleManager = roleManager;
+        _adminAccess = adminAccess;
     }
 
     public record RegisterRequest(
@@ -41,7 +50,7 @@ public class AuthController : ControllerBase
         [Required(ErrorMessage = "El email es obligatorio.")] string Email,
         [Required(ErrorMessage = "La contraseña es obligatoria.")] string Password);
 
-    public record UserDto(Guid Id, string Email, string DisplayName);
+    public record UserDto(Guid Id, string Email, string DisplayName, bool IsAdmin);
 
     /// <summary>Crea una cuenta e inicia sesión con ella.</summary>
     [HttpPost("register")]
@@ -73,8 +82,10 @@ public class AuthController : ControllerBase
             });
         }
 
+        // El rol va antes de iniciar sesión para que la cookie ya lo incluya.
+        await _adminAccess.EnsureRoleAsync(user, _userManager, _roleManager);
         await _signInManager.SignInAsync(user, isPersistent: true);
-        return Ok(ToDto(user));
+        return Ok(await ToDtoAsync(user));
     }
 
     /// <summary>Inicia sesión con email y contraseña.</summary>
@@ -93,10 +104,16 @@ public class AuthController : ControllerBase
 
         if (result.IsLockedOut)
         {
+            // Bloqueo indefinido = suspendida por un administrador.
+            var locked = await _userManager.FindByNameAsync(email);
+            var suspended = locked?.LockoutEnd > DateTimeOffset.UtcNow.AddYears(10);
+
             return Problem(
-                title: "Cuenta bloqueada temporalmente",
-                detail: "Demasiados intentos fallidos. Vuelve a intentarlo en unos minutos.",
-                statusCode: StatusCodes.Status429TooManyRequests);
+                title: suspended ? "Cuenta suspendida" : "Cuenta bloqueada temporalmente",
+                detail: suspended
+                    ? "Esta cuenta ha sido suspendida por un administrador."
+                    : "Demasiados intentos fallidos. Vuelve a intentarlo en unos minutos.",
+                statusCode: suspended ? StatusCodes.Status403Forbidden : StatusCodes.Status429TooManyRequests);
         }
 
         if (!result.Succeeded)
@@ -110,7 +127,19 @@ public class AuthController : ControllerBase
         }
 
         var user = await _userManager.FindByNameAsync(email);
-        return user is null ? Unauthorized() : Ok(ToDto(user));
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        // Si el email se acaba de añadir a Admin:Emails, se da el rol y se
+        // renueva la cookie para que lo incluya.
+        if (await _adminAccess.EnsureRoleAsync(user, _userManager, _roleManager))
+        {
+            await _signInManager.RefreshSignInAsync(user);
+        }
+
+        return Ok(await ToDtoAsync(user));
     }
 
     /// <summary>Cierra la sesión actual.</summary>
@@ -130,9 +159,19 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<UserDto>> Me()
     {
         var user = await _userManager.GetUserAsync(User);
-        return user is null ? Unauthorized() : Ok(ToDto(user));
+        if (user is null || await _userManager.IsLockedOutAsync(user))
+        {
+            await _signInManager.SignOutAsync();
+            return Unauthorized();
+        }
+
+        return Ok(await ToDtoAsync(user));
     }
 
-    private static UserDto ToDto(AppUser user) =>
-        new(user.Id, user.Email ?? string.Empty, user.DisplayName);
+    private async Task<UserDto> ToDtoAsync(AppUser user) =>
+        new(
+            user.Id,
+            user.Email ?? string.Empty,
+            user.DisplayName,
+            await _userManager.IsInRoleAsync(user, AdminAccess.Role));
 }

@@ -1,0 +1,86 @@
+@page "/admin/cafes/{id:guid}"
+@model CafeDetalleModel
+@{
+    var cafe = Model.Cafe!;
+    ViewData["Title"] = cafe.Name;
+}
+<p><a href="/admin/cafes">← Todas las cafeterías</a></p>
+<h1>@cafe.Name</h1>
+<p class="suave">
+    @(cafe.OsmId is null ? "Datos de ejemplo" : $"OpenStreetMap ({cafe.OsmId})") ·
+    Alta: @AdminPageModel.Date(cafe.CreatedAt)
+    @if (cafe.OsmId is not null)
+    {
+        <text> · </text><a href="https://www.openstreetmap.org/@cafe.OsmId" target="_blank" rel="noopener noreferrer">Ver en OpenStreetMap</a>
+    }
+</p>
+
+<section class="tarjeta seccion" aria-labelledby="titulo-datos">
+    <h2 id="titulo-datos">Datos</h2>
+    @if (Model.Error is not null)
+    {
+        <p class="error" role="alert">@Model.Error</p>
+    }
+    <form method="post" asp-page-handler="Save" class="rejilla-formulario">
+        <div>
+            <label for="Name">Nombre</label>
+            <input id="Name" name="Name" value="@Model.Name" maxlength="120" required />
+        </div>
+        <div>
+            <label for="Address">Dirección</label>
+            <input id="Address" name="Address" value="@Model.Address" maxlength="200" required />
+        </div>
+        <div>
+            <label for="Neighborhood">Barrio</label>
+            <input id="Neighborhood" name="Neighborhood" value="@Model.Neighborhood" maxlength="80" />
+        </div>
+        <div>
+            <label for="Phone">Teléfono</label>
+            <input id="Phone" name="Phone" value="@Model.Phone" maxlength="40" />
+        </div>
+        <div class="ancho">
+            <label for="Hours">Horario</label>
+            <input id="Hours" name="Hours" value="@Model.Hours" maxlength="200" aria-describedby="ayuda-horario" />
+            <span id="ayuda-horario" class="suave pequeno">Formato OpenStreetMap (Mo-Fr 08:00-20:00; Sa 09:00-14:00) o «Lun-Vie 08:00-20:00 · Sáb 09:00-14:00».</span>
+        </div>
+        <fieldset class="ancho">
+            <legend>Servicios</legend>
+            <div class="casillas">
+                @foreach (var (key, label) in CafeDetalleModel.TagOptions)
+                {
+                    <label class="casilla">
+                        <input type="checkbox" name="Tags" value="@key" checked="@Model.Tags.Contains(key)" />
+                        @label
+                    </label>
+                }
+            </div>
+        </fieldset>
+        <div class="ancho">
+            <button type="submit" class="boton">Guardar cambios</button>
+        </div>
+    </form>
+</section>
+
+<section class="seccion" aria-labelledby="titulo-carta">
+    <h2 id="titulo-carta">Carta (@Model.Dishes.Count)</h2>
+    <partial name="_TablaPlatos" model="new DishTableModel(Model.Dishes, Model.CurrentUrl, ShowCafe: false)" />
+</section>
+
+<section class="seccion" aria-labelledby="titulo-fotos">
+    <h2 id="titulo-fotos">Fotos (@Model.Photos.Count)</h2>
+    <partial name="_GaleriaFotos" model="new PhotoGridModel(Model.Photos, Model.CurrentUrl, ShowCafe: false)" />
+</section>
+
+<section class="seccion" aria-labelledby="titulo-resenas">
+    <h2 id="titulo-resenas">Reseñas (@Model.Reviews.Count)</h2>
+    <partial name="_ListaResenas" model="new ReviewListModel(Model.Reviews, Model.CurrentUrl, ShowCafe: false)" />
+</section>
+
+<section class="tarjeta seccion peligro" aria-labelledby="titulo-borrar">
+    <h2 id="titulo-borrar">Borrar cafetería</h2>
+    <p>Se borran también su carta, sus fotos y sus reseñas. No se puede deshacer. Si es de OpenStreetMap, seguirá apareciendo en la web (sin datos de la comunidad).</p>
+    <form method="post" asp-page-handler="Delete" data-confirmar="¿Borrar «@cafe.Name» con toda su carta, fotos y reseñas? No se puede deshacer.">
+        <input type="hidden" name="name" value="@cafe.Name" />
+        <button type="submit" class="boton rechazar">Borrar cafetería</button>
+    </form>
+</section>

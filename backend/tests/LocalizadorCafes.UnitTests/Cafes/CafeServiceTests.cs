@@ -31,7 +31,7 @@ public class CafeServiceTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Cafe> { cafe });
 
-        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>(), Mock.Of<IOsmCafeSource>());
 
         var result = await service.SearchAsync(null, null, null, null);
 
@@ -50,7 +50,7 @@ public class CafeServiceTests
             .Setup(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Cafe?)null);
 
-        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>(), Mock.Of<IOsmCafeSource>());
 
         var result = await service.AddReviewAsync(
             Guid.NewGuid(),
@@ -73,7 +73,7 @@ public class CafeServiceTests
             .Setup(x => x.AddReviewAsync(It.IsAny<Review>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>(), Mock.Of<IOsmCafeSource>());
 
         var result = await service.AddReviewAsync(
             cafe.Id,
@@ -111,7 +111,7 @@ public class CafeServiceTests
             .Callback<Review, CancellationToken>((review, _) => stored = review)
             .Returns(Task.CompletedTask);
 
-        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>(), Mock.Of<IOsmCafeSource>());
 
         var result = await service.AddReviewAsync(
             cafe.Id,
@@ -152,7 +152,7 @@ public class CafeServiceTests
             .Setup(x => x.AddReviewAsync(It.IsAny<Review>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>(), Mock.Of<IOsmCafeSource>());
 
         var act = () => service.AddReviewAsync(
             cafe.Id,
@@ -188,7 +188,7 @@ public class CafeServiceTests
             .Setup(x => x.GetByIdAsync(cafe.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cafe);
 
-        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>());
+        var service = new CafeService(repository.Object, Mock.Of<IPhotoStorage>(), Mock.Of<IOsmCafeSource>());
 
         var result = await service.GetByIdAsync(cafe.Id);
 

@@ -17,4 +17,6 @@ public class CafePhoto : BaseEntity
 
     /// <summary>Usuario que la subió (null en fotos de fuentes externas).</summary>
     public Guid? UploadedByUserId { get; set; }
+
+    public ModerationStatus Status { get; set; } = ModerationStatus.Approved;
 }

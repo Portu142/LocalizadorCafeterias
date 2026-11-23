@@ -1,0 +1,8 @@
+@model (string Actual, Func<string, string> Url)
+
+<nav class="pestanas" aria-label="Filtrar por estado">
+    @foreach (var (value, label) in new[] { ("pendientes", "Pendientes"), ("publicados", "Publicados"), ("rechazados", "Rechazados"), ("todos", "Todos") })
+    {
+        <a href="@Model.Url(value)" class="@(Model.Actual == value ? "activa" : "")" aria-current="@(Model.Actual == value ? "page" : null)">@label</a>
+    }
+</nav>

@@ -18,7 +18,9 @@ import type { CafeDetail as CafeDetailData } from '../types/cafe';
 import { CafePhotos } from './CafePhotos';
 import { CafeTagList } from './CafeTagList';
 import { PhotoUpload } from './PhotoUpload';
-import { isApiCafe } from '../api/cafes';
+import { DeleteDishButton, MenuEditor } from './MenuEditor';
+import { useCurrentUser } from '../hooks/useAuth';
+import { USE_API } from '../config';
 import { ReviewForm } from './ReviewForm';
 import { StarRating } from './StarRating';
 
@@ -31,6 +33,8 @@ type CafeDetailProps = {
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onRequestLogin: () => void;
+  /** Un café de OpenStreetMap se ha guardado en la API con este id. */
+  onCafeImported: (newId: string) => void;
 };
 
 export function CafeDetail({
@@ -42,7 +46,9 @@ export function CafeDetail({
   isFavorite,
   onToggleFavorite,
   onRequestLogin,
+  onCafeImported,
 }: CafeDetailProps) {
+  const { data: user } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<'menu' | 'reviews'>('menu');
 
   // Patrón de pestañas WAI-ARIA: flechas (con vuelta), Inicio y Fin.
@@ -269,8 +275,14 @@ export function CafeDetail({
             Cómo llegar <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="sr-only">(Google Maps, se abre en una pestaña nueva)</span>
           </a>
-          {isApiCafe(cafe.id) && (
-            <PhotoUpload key={cafe.id} cafeId={cafe.id} onRequestLogin={onRequestLogin} />
+          {/* Con la API se pueden subir fotos de cualquier café (los de OSM se guardan antes). */}
+          {USE_API && (
+            <PhotoUpload
+              key={cafe.id}
+              cafeId={cafe.id}
+              onRequestLogin={onRequestLogin}
+              onCafeImported={onCafeImported}
+            />
           )}
           {/* Sin fotos con licencia libre: se enlaza a las del local en Google. */}
           {photos.length === 0 && (
@@ -347,8 +359,18 @@ export function CafeDetail({
                 {menuStats.map((item) => (
                   <li key={item.id} className="py-3">
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-sm text-coffee-800">{item.name}</span>
-                      <span className="shrink-0 text-sm font-semibold text-coffee-950">
+                      <span className="text-sm text-coffee-800">
+                        {item.name}
+                        {item.status === 'pending' && (
+                          <span className="ml-2 inline-flex rounded-full bg-amber-50 px-2 py-0.5 align-middle text-[10px] font-semibold text-amber-800">
+                            Pendiente de revisión
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-coffee-950">
+                        {user && item.addedByUserId === user.id && (
+                          <DeleteDishButton cafeId={cafe.id} itemId={item.id} itemName={item.name} />
+                        )}
                         {formatPrice(item.price)}
                       </span>
                     </div>
@@ -374,6 +396,13 @@ export function CafeDetail({
               <div className="mt-6 rounded-2xl bg-cream-100 p-4 text-xs leading-5 text-coffee-600">
                 Precios orientativos. El menú puede variar según la temporada.
               </div>
+
+              <MenuEditor
+                key={cafe.id}
+                cafeId={cafe.id}
+                onRequestLogin={onRequestLogin}
+                onCafeImported={onCafeImported}
+              />
             </>
           ) : (
             <div className="rounded-2xl bg-cream-100 p-5 text-center">
@@ -383,10 +412,6 @@ export function CafeDetail({
               />
               <p className="mt-2 text-sm font-medium text-coffee-800">
                 La carta no está publicada aquí
-              </p>
-              <p className="mt-1 text-xs leading-5 text-coffee-600">
-                OpenStreetMap no guarda cartas y Google no permite copiarlas, así
-                que te llevamos a la carta del propio local.
               </p>
               <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                 <a
@@ -436,6 +461,15 @@ export function CafeDetail({
                 >
                   Ver reseñas
                 </button>
+              </div>
+
+              <div className="text-left">
+                <MenuEditor
+                  key={cafe.id}
+                  cafeId={cafe.id}
+                  onRequestLogin={onRequestLogin}
+                  onCafeImported={onCafeImported}
+                />
               </div>
             </div>
           )}
@@ -505,8 +539,10 @@ export function CafeDetail({
           <ReviewForm
             key={cafe.id}
             cafeId={cafe.id}
-            menu={cafe.menu}
+            // Solo se pueden puntuar platos ya aprobados.
+            menu={cafe.menu.filter((item) => item.status !== 'pending')}
             onRequestLogin={onRequestLogin}
+            onCafeImported={onCafeImported}
           />
         </div>
       </div>

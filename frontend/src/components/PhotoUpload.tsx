@@ -1,12 +1,14 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Camera, CheckCircle2, Loader2 } from 'lucide-react';
-import { ApiError, uploadPhoto } from '../api/cafes';
+import { ApiError, ensureApiCafeId, uploadPhoto } from '../api/cafes';
 import { useCurrentUser, useForgetUser } from '../hooks/useAuth';
 
 type PhotoUploadProps = {
   cafeId: string;
   onRequestLogin: () => void;
+  /** El café era de OpenStreetMap y se ha guardado en la API con este id. */
+  onCafeImported?: (newId: string) => void;
 };
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -17,7 +19,7 @@ const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'];
  * comprobación de tipo y tamaño aquí es para avisar rápido: la API vuelve a
  * validar el archivo por su contenido real.
  */
-export function PhotoUpload({ cafeId, onRequestLogin }: PhotoUploadProps) {
+export function PhotoUpload({ cafeId, onRequestLogin, onCafeImported }: PhotoUploadProps) {
   const { data: user } = useCurrentUser();
   const forgetUser = useForgetUser();
   const queryClient = useQueryClient();
@@ -26,10 +28,20 @@ export function PhotoUpload({ cafeId, onRequestLogin }: PhotoUploadProps) {
   const [uploaded, setUploaded] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: (file: File) => uploadPhoto(cafeId, file),
-    onSuccess: async () => {
+    mutationFn: async (file: File) => {
+      const targetId = await ensureApiCafeId(cafeId);
+      await uploadPhoto(targetId, file);
+      return targetId;
+    },
+    onSuccess: async (targetId) => {
       setUploaded(true);
-      await queryClient.invalidateQueries({ queryKey: ['cafe', cafeId] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['cafe', targetId] }),
+        queryClient.invalidateQueries({ queryKey: ['cafes'] }),
+      ]);
+      if (targetId !== cafeId) {
+        onCafeImported?.(targetId);
+      }
     },
     onError: (error) => {
       if (error instanceof ApiError && error.status === 401) {
@@ -105,7 +117,7 @@ export function PhotoUpload({ cafeId, onRequestLogin }: PhotoUploadProps) {
         {uploaded && !error && (
           <span className="inline-flex items-center gap-1 text-emerald-800">
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-            Foto publicada
+            Foto enviada: se publicará cuando la revise un administrador
           </span>
         )}
       </span>

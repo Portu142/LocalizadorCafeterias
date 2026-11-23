@@ -35,6 +35,20 @@ public sealed class LocalPhotoStorage : IPhotoStorage
         return PublicPrefix + fileName;
     }
 
+    public Task DeleteAsync(string publicUrl, CancellationToken cancellationToken = default)
+    {
+        if (publicUrl.StartsWith(PublicPrefix, StringComparison.Ordinal))
+        {
+            var path = Resolve(publicUrl[PublicPrefix.Length..]);
+            if (path is not null)
+            {
+                File.Delete(path);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
     /// <summary>Ruta física de una foto, o null si el nombre no es válido o no existe.</summary>
     public string? Resolve(string fileName)
     {

@@ -10,4 +10,5 @@ public record CafeSummaryDto(
     double Latitude,
     double Longitude,
     IReadOnlyList<string> Tags,
-    string Hours);
+    string Hours,
+    string? OsmId = null);

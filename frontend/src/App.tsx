@@ -16,6 +16,7 @@ import { useCafe } from './hooks/useCafe';
 import { useCafes } from './hooks/useCafes';
 import { useFavorites } from './hooks/useFavorites';
 import { useGeolocation } from './hooks/useGeolocation';
+import { usePresence } from './hooks/usePresence';
 import { DEFAULT_LOCATION, distanceKm } from './lib/geo';
 import { isOpenAt } from './lib/openingHours';
 
@@ -181,6 +182,9 @@ function App() {
     refetch: refetchDetail,
   } = useCafe(effectiveSelectedId);
 
+  // Presencia en tiempo real para el panel de administración (solo con API).
+  usePresence(selectedCafe?.id ?? null, selectedCafe?.name ?? null);
+
   const stats = useMemo(
     () => ({
       cafes: cafes.length,
@@ -196,7 +200,9 @@ function App() {
   // activa puede ser PostgreSQL (Madrid) o el fallback de OpenStreetMap cuando
   // no hay cafeterías cerca de la ubicación real.
   const sourceNote =
-    dataSource === 'osm'
+    dataSource === 'mixed'
+      ? 'Cafés de la API (con carta de la comunidad) y de OpenStreetMap'
+      : dataSource === 'osm'
       ? IS_DEMO_MODE
         ? locationActive
           ? 'Cafés reales de OpenStreetMap cerca de tu ubicación (sin carta)'
@@ -437,6 +443,7 @@ function App() {
                 }
               }}
               onRequestLogin={() => setAuthMode('login')}
+              onCafeImported={(newId) => setSelectedId(newId)}
             />
           </div>
         </div>

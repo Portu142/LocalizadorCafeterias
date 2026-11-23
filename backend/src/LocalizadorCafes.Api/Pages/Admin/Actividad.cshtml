@@ -1,0 +1,131 @@
+@page "/admin/actividad"
+@model ActividadModel
+@{
+    ViewData["Title"] = "Actividad";
+}
+<h1>Actividad</h1>
+
+<nav class="pestanas principal" aria-label="Tipo de actividad">
+    <a href="/admin/actividad" class="@(Model.ShowAdminLog ? "" : "activa")" aria-current="@(Model.ShowAdminLog ? null : "page")">Comunidad</a>
+    <a href="/admin/actividad?vista=admin" class="@(Model.ShowAdminLog ? "activa" : "")" aria-current="@(Model.ShowAdminLog ? "page" : null)">Administración</a>
+</nav>
+
+@if (!Model.ShowAdminLog)
+{
+    <p class="suave">
+        Lo que hacen los usuarios en la web: reseñas, platos propuestos, fotos, cafeterías de OpenStreetMap que se guardan
+        al aportarles algo y cuentas nuevas. Se muestran los @ActividadModel.CommunityLimit más recientes.
+    </p>
+
+    @if (Model.Community.Count == 0)
+    {
+        <p class="vacio">Todavía no hay actividad de la comunidad.</p>
+    }
+    else
+    {
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Qué</th>
+                    <th scope="col">Quién</th>
+                    <th scope="col">Detalle</th>
+                    <th scope="col">Cafetería</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Community)
+                {
+                    <tr>
+                        <td data-label="Fecha">@AdminPageModel.Date(item.When)</td>
+                        <td data-label="Qué">
+                            <strong>@ActividadModel.KindLabel(item.Kind)</strong>
+                            @if (item.Status is LocalizadorCafes.Domain.Entities.ModerationStatus status)
+                            {
+                                <br /><span class="@AdminPageModel.StatusClass(status)">@AdminPageModel.StatusLabel(status)</span>
+                            }
+                        </td>
+                        <td data-label="Quién">
+                            @if (item.UserId is Guid userId)
+                            {
+                                <a href="/admin/usuarios/@userId">@item.Who</a>
+                            }
+                            else if (item.Who.Length > 0)
+                            {
+                                @item.Who
+                            }
+                            else
+                            {
+                                <span class="suave">—</span>
+                            }
+                        </td>
+                        <td data-label="Detalle">@item.What</td>
+                        <td data-label="Cafetería">
+                            @if (item.CafeId is Guid cafeId)
+                            {
+                                <a href="/admin/cafes/@cafeId">@item.CafeName</a>
+                            }
+                            else
+                            {
+                                <span class="suave">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else
+{
+<p class="suave">Todas las acciones hechas desde el panel: quién, qué y cuándo. Las entradas no se pueden editar ni borrar.</p>
+
+<nav class="pestanas" aria-label="Filtrar por tipo">
+    @foreach (var (value, label) in ActividadModel.Types)
+    {
+        var active = Model.Tipo == value;
+        <a href="@Model.WithQuery("tipo", value)" class="@(active ? "activa" : "")" aria-current="@(active ? "page" : null)">@label</a>
+    }
+</nav>
+
+@if (Model.Result.Items.Count == 0)
+{
+    <p class="vacio">Todavía no hay acciones registradas.</p>
+}
+else
+{
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th scope="col">Fecha</th>
+                <th scope="col">Administrador</th>
+                <th scope="col">Acción</th>
+                <th scope="col">Elemento</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in Model.Result.Items)
+            {
+                var url = ActividadModel.TargetUrl(entry);
+                <tr>
+                    <td data-label="Fecha">@AdminPageModel.Date(entry.CreatedAt)</td>
+                    <td data-label="Administrador">@entry.AdminName</td>
+                    <td data-label="Acción"><strong>@entry.Action</strong></td>
+                    <td data-label="Elemento">
+                        <span class="etiqueta">@entry.TargetType</span>
+                        @if (url is not null)
+                        {
+                            <a href="@url">@(string.IsNullOrEmpty(entry.Details) ? "ver" : entry.Details)</a>
+                        }
+                        else
+                        {
+                            @entry.Details
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<partial name="_Paginacion" model="new PagerModel(Model.Result.Page, Model.Result.TotalPages, Model.Result.Total, Model.PageUrl)" />
+}

@@ -9,6 +9,8 @@ export type CafeSummary = {
   longitude: number;
   /** Servicios (wifi, terraza…) para los filtros. Puede faltar si no hay datos. */
   tags?: string[];
+  /** Elemento de OSM del que procede un café guardado en la API («node/123»). */
+  osmId?: string;
   /** Horario en formato OSM o «Lun-Vie 08:00-20:00 · …»; vacío si no se conoce. */
   hours?: string;
 };
@@ -17,7 +19,13 @@ export type MenuItem = {
   id: string;
   name: string;
   price: number;
+  /** Quién lo añadió (vacío en los datos de ejemplo). */
+  addedByUserId?: string | null;
+  /** «pending» solo lo recibe su autor mientras espera revisión. */
+  status?: ModerationStatus;
 };
+
+export type ModerationStatus = 'approved' | 'pending' | 'rejected';
 
 export type MenuItemRating = {
   menuItemId: string;
@@ -52,6 +60,7 @@ export type CafePhoto = {
   license: string;
   /** Página de origen (autor y licencia completos). */
   sourceUrl: string;
+  status?: ModerationStatus;
 };
 
 export type CafeDetail = CafeSummary & {
@@ -81,6 +90,7 @@ export type User = {
   id: string;
   email: string;
   displayName: string;
+  isAdmin?: boolean;
 };
 
 export type UserReview = {

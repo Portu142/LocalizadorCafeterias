@@ -17,6 +17,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<MenuItemRating> MenuItemRatings => Set<MenuItemRating>();
     public DbSet<CafePhoto> CafePhotos => Set<CafePhoto>();
+    public DbSet<AdminAuditEntry> AdminAuditLog => Set<AdminAuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

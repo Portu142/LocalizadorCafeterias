@@ -1,0 +1,13 @@
+@page "/admin/fotos"
+@model FotosModel
+@{
+    ViewData["Title"] = "Fotos";
+    (string, Func<string, string>) filtro = (Model.EstadoActual, value => Model.WithQuery("estado", value));
+}
+<h1>Fotos</h1>
+<p class="suave">Fotos subidas por la comunidad y de Wikimedia Commons. Pulsa una imagen para verla a tamaño completo.</p>
+
+<partial name="_FiltroEstado" model="filtro" />
+
+<partial name="_GaleriaFotos" model="new PhotoGridModel(Model.Result.Items, Model.CurrentUrl)" />
+<partial name="_Paginacion" model="new PagerModel(Model.Result.Page, Model.Result.TotalPages, Model.Result.Total, Model.PageUrl)" />

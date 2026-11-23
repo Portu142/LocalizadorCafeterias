@@ -70,6 +70,8 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': { target: 'http://localhost:5067', changeOrigin: true },
         '/health': { target: 'http://localhost:5067', changeOrigin: true },
+        // Panel de administración del backend (páginas HTML en /admin).
+        '/admin': { target: 'http://localhost:5067', changeOrigin: true },
       },
     },
     plugins: [

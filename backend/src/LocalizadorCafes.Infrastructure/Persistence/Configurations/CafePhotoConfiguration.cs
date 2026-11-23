@@ -31,6 +31,12 @@ public class CafePhotoConfiguration : IEntityTypeConfiguration<CafePhoto>
 
         builder.HasIndex(photo => photo.CafeId);
 
+        builder.Property(photo => photo.Status)
+            .HasConversion<string>()
+            .HasMaxLength(10);
+
+        builder.HasIndex(photo => photo.Status);
+
         builder.HasOne<AppUser>()
             .WithMany()
             .HasForeignKey(photo => photo.UploadedByUserId)

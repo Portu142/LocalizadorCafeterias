@@ -1,0 +1,63 @@
+@using System.Globalization
+@model (string Title, string Unit, IReadOnlyList<LocalizadorCafes.Application.Admin.WeeklyCount> Weeks)
+@{
+    // Barras finas de una sola serie (sin leyenda: el título la nombra), con
+    // las esquinas superiores redondeadas, 2 px de separación y un único eje.
+    const double width = 320, height = 120, top = 8, bottom = 22;
+    var weeks = Model.Weeks;
+    var max = Math.Max(1, weeks.Max(week => week.Count));
+    var slot = width / weeks.Count;
+    var barWidth = Math.Max(4, slot - 2);
+    var plotHeight = height - top - bottom;
+    var total = weeks.Sum(week => week.Count);
+    var current = weeks[^1].Count;
+    var id = "grafica-" + Model.Title.GetHashCode().ToString("x", CultureInfo.InvariantCulture);
+    string N(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    string BarPath(double x, double y, double w, double h)
+    {
+        var r = Math.Min(4, Math.Min(w / 2, h));
+        var baseline = top + plotHeight;
+        return $"M{N(x)},{N(baseline)} V{N(y + r)} Q{N(x)},{N(y)} {N(x + r)},{N(y)} H{N(x + w - r)} Q{N(x + w)},{N(y)} {N(x + w)},{N(y + r)} V{N(baseline)} Z";
+    }
+}
+<figure class="tarjeta grafica" aria-labelledby="@(id)-titulo">
+    <figcaption id="@(id)-titulo">
+        <span class="grafica-titulo">@Model.Title</span>
+        <span class="grafica-dato">@current <small>esta semana</small></span>
+        <span class="suave pequeno">@total en las últimas @weeks.Count semanas</span>
+    </figcaption>
+    <svg viewBox="0 0 @N(width) @N(height)" role="img" aria-labelledby="@(id)-titulo" class="grafica-svg">
+        <line x1="0" x2="@N(width)" y1="@N(top + plotHeight)" y2="@N(top + plotHeight)" class="grafica-eje" />
+        @for (var index = 0; index < weeks.Count; index++)
+        {
+            var week = weeks[index];
+            var x = index * slot + (slot - barWidth) / 2;
+            var h = week.Count == 0 ? 0 : Math.Max(2, week.Count / (double)max * plotHeight);
+            var y = top + plotHeight - h;
+            <g class="grafica-barra">
+                <title>Semana del @AdminPageModel.ShortDate(week.WeekStart): @week.Count @Model.Unit</title>
+                @* Zona de toque más grande que la barra para el tooltip. *@
+                <rect x="@N(index * slot)" y="@N(top)" width="@N(slot)" height="@N(plotHeight)" class="grafica-zona" />
+                @if (h > 0)
+                {
+                    <path d="@BarPath(x, y, barWidth, h)" class="@(index == weeks.Count - 1 ? "grafica-relleno actual" : "grafica-relleno")" />
+                }
+            </g>
+        }
+        <text x="0" y="@N(height - 6)" class="grafica-etiqueta">@AdminPageModel.ShortDate(weeks[0].WeekStart)</text>
+        <text x="@N(width)" y="@N(height - 6)" text-anchor="end" class="grafica-etiqueta">Esta semana</text>
+    </svg>
+    <details>
+        <summary class="pequeno">Ver datos</summary>
+        <table class="tabla compacta">
+            <thead><tr><th scope="col">Semana</th><th scope="col">@Model.Unit</th></tr></thead>
+            <tbody>
+                @foreach (var week in weeks)
+                {
+                    <tr><td>@AdminPageModel.ShortDate(week.WeekStart)</td><td>@week.Count</td></tr>
+                }
+            </tbody>
+        </table>
+    </details>
+</figure>

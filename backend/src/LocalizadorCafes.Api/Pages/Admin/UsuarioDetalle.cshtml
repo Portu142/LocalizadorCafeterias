@@ -1,0 +1,44 @@
+@page "/admin/usuarios/{id:guid}"
+@model UsuarioDetalleModel
+@{
+    var account = Model.Account!;
+    ViewData["Title"] = account.DisplayName;
+}
+<p><a href="/admin/usuarios">← Todos los usuarios</a></p>
+<h1>@account.DisplayName</h1>
+<p class="suave">
+    @account.Email · Alta: @AdminPageModel.Date(account.CreatedAt)
+    @if (Model.IsAdmin)
+    {
+        <span class="estado publicado">Administrador</span>
+    }
+    @if (Model.IsSuspended)
+    {
+        <span class="estado rechazado">Suspendida</span>
+    }
+</p>
+
+<div class="acciones izquierda">
+    <partial name="_AccionesUsuario" model="(account.Id, account.DisplayName, Model.IsAdmin, Model.IsSuspended, account.Id.ToString() == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, Model.CurrentUrl)" />
+</div>
+
+<div class="rejilla resumen-usuario">
+    <div class="tarjeta dato"><span class="numero">@Model.Reviews.Count</span><span>reseñas</span></div>
+    <div class="tarjeta dato"><span class="numero">@Model.Dishes.Count</span><span>platos propuestos</span></div>
+    <div class="tarjeta dato"><span class="numero">@Model.Photos.Count</span><span>fotos subidas</span></div>
+</div>
+
+<section class="seccion" aria-labelledby="titulo-resenas">
+    <h2 id="titulo-resenas">Reseñas</h2>
+    <partial name="_ListaResenas" model="new ReviewListModel(Model.Reviews, Model.CurrentUrl)" />
+</section>
+
+<section class="seccion" aria-labelledby="titulo-platos">
+    <h2 id="titulo-platos">Platos propuestos</h2>
+    <partial name="_TablaPlatos" model="new DishTableModel(Model.Dishes, Model.CurrentUrl)" />
+</section>
+
+<section class="seccion" aria-labelledby="titulo-fotos">
+    <h2 id="titulo-fotos">Fotos subidas</h2>
+    <partial name="_GaleriaFotos" model="new PhotoGridModel(Model.Photos, Model.CurrentUrl)" />
+</section>

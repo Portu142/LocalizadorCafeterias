@@ -1,0 +1,69 @@
+@page "/admin/cafes"
+@model CafesModel
+@{
+    ViewData["Title"] = "Cafeterías";
+}
+<h1>Cafeterías</h1>
+<p class="suave">
+    Cafeterías guardadas en la base de datos. La web muestra además todas las de OpenStreetMap de la zona, pero esas solo
+    se guardan (y aparecen aquí) cuando alguien les añade una reseña, una foto o un plato. Las de «Datos de ejemplo» son las
+    iniciales de Madrid.
+</p>
+
+<form method="get" class="buscador" role="search">
+    <label for="q" class="oculto">Buscar cafeterías</label>
+    <input id="q" name="q" value="@Model.Query" type="search" placeholder="Buscar por nombre, dirección o barrio…" maxlength="100" />
+    <button type="submit" class="boton secundario">Buscar</button>
+    @if (!string.IsNullOrEmpty(Model.Query))
+    {
+        <a href="@Model.WithQuery("q", null)">Quitar búsqueda</a>
+    }
+</form>
+
+@if (Model.Result.Items.Count == 0)
+{
+    <p class="vacio">No hay cafeterías que coincidan.</p>
+}
+else
+{
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th scope="col">Cafetería</th>
+                <th scope="col">Barrio</th>
+                <th scope="col">Origen</th>
+                <th scope="col">Carta</th>
+                <th scope="col">Fotos</th>
+                <th scope="col">Reseñas</th>
+                <th scope="col">Por revisar</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var cafe in Model.Result.Items)
+            {
+                <tr>
+                    <td data-label="Cafetería">
+                        <a href="/admin/cafes/@cafe.Id"><strong>@cafe.Name</strong></a>
+                        <br /><span class="suave pequeno">@cafe.Address</span>
+                    </td>
+                    <td data-label="Barrio">@(string.IsNullOrEmpty(cafe.Neighborhood) ? "—" : cafe.Neighborhood)</td>
+                    <td data-label="Origen">@(cafe.OsmId is null ? "Datos de ejemplo" : "OpenStreetMap")</td>
+                    <td data-label="Carta">@cafe.MenuCount</td>
+                    <td data-label="Fotos">@cafe.PhotoCount</td>
+                    <td data-label="Reseñas">@cafe.ReviewCount</td>
+                    <td data-label="Por revisar">
+                        @if (cafe.PendingCount > 0)
+                        {
+                            <span class="estado pendiente">@cafe.PendingCount</span>
+                        }
+                        else
+                        {
+                            <span class="suave">0</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<partial name="_Paginacion" model="new PagerModel(Model.Result.Page, Model.Result.TotalPages, Model.Result.Total, Model.PageUrl)" />

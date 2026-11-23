@@ -1,0 +1,52 @@
+@{
+    var admin = Model as AdminPageModel;
+    var current = ViewContext.RouteData.Values["page"]?.ToString();
+    string Active(string page) => current == page ? "activo" : "";
+}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@ViewData["Title"] · Panel de administración</title>
+    <link rel="stylesheet" href="/admin/admin.css" asp-append-version="true" />
+    <script src="/admin/admin.js" asp-append-version="true" defer></script>
+</head>
+<body>
+    @if (ViewData["SinMenu"] is true)
+    {
+        <main class="centrado">@RenderBody()</main>
+    }
+    else
+    {
+        <header class="cabecera">
+            <a class="marca" href="/admin">☕ <span>Localizador de Cafés</span> <small>Administración</small></a>
+            <form method="post" asp-page="/Admin/Salir">
+                <span class="usuario">@User.Identity?.Name</span>
+                <button type="submit" class="boton secundario">Cerrar sesión</button>
+            </form>
+        </header>
+        <div class="contenedor">
+            <nav class="menu" aria-label="Secciones del panel">
+                <a class="@Active("/Admin/Index")" href="/admin">Resumen</a>
+                <a class="@Active("/Admin/EnVivo")" href="/admin/en-vivo">En vivo</a>
+                <a class="@Active("/Admin/Platos")" href="/admin/platos">Platos <span class="contador">@(admin?.PendingDishCount ?? 0)</span></a>
+                <a class="@Active("/Admin/Fotos")" href="/admin/fotos">Fotos <span class="contador">@(admin?.PendingPhotoCount ?? 0)</span></a>
+                <a class="@Active("/Admin/Resenas")" href="/admin/resenas">Reseñas</a>
+                <a class="@(current is "/Admin/Cafes" or "/Admin/CafeDetalle" ? "activo" : "")" href="/admin/cafes">Cafeterías</a>
+                <a class="@(current is "/Admin/Usuarios" or "/Admin/UsuarioDetalle" ? "activo" : "")" href="/admin/usuarios">Usuarios</a>
+                <a class="@Active("/Admin/Actividad")" href="/admin/actividad">Actividad</a>
+                <a class="@Active("/Admin/Contrasena")" href="/admin/contrasena">Contraseña</a>
+            </nav>
+            <main class="contenido">
+                @if (!string.IsNullOrEmpty(admin?.Message))
+                {
+                    <p class="aviso" role="status">@admin.Message</p>
+                }
+                @RenderBody()
+            </main>
+        </div>
+    }
+</body>
+</html>

@@ -48,6 +48,11 @@ export function CafePhotos({ cafeName, photos }: CafePhotosProps) {
               }
             />
             <figcaption className="truncate px-3 py-1.5 text-[11px] text-coffee-500">
+              {photo.status === 'pending' && (
+                <span className="mr-1.5 rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">
+                  Pendiente de revisión
+                </span>
+              )}
               {/* Las fotos de la comunidad no tienen página de origen. */}
               {photo.sourceUrl ? (
                 <a

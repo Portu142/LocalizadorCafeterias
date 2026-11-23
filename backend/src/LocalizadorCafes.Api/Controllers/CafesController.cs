@@ -1,6 +1,7 @@
 using FluentValidation;
 using LocalizadorCafes.Application.Cafes;
 using LocalizadorCafes.Application.Cafes.Dtos;
+using LocalizadorCafes.Application.Common.Interfaces;
 using LocalizadorCafes.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -93,7 +94,9 @@ public class CafesController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
-        var cafe = await _cafeService.GetByIdAsync(id, cancellationToken);
+        // Con sesión, el usuario ve también sus platos y fotos pendientes.
+        var viewerId = Guid.TryParse(_userManager.GetUserId(User), out var userId) ? userId : (Guid?)null;
+        var cafe = await _cafeService.GetByIdAsync(id, viewerId, cancellationToken);
         return cafe is null ? NotFound() : Ok(cafe);
     }
 
@@ -176,9 +179,116 @@ public class CafesController : ControllerBase
             : CreatedAtAction(nameof(GetById), new { id }, result);
     }
 
+    /// <summary>
+    /// Guarda un café de OpenStreetMap en la base de datos (o devuelve el ya
+    /// guardado) para poder añadirle carta, reseñas y fotos. Los datos se
+    /// descargan de OSM en el servidor: el cliente solo envía el id.
+    /// </summary>
+    [Authorize]
+    [HttpPost("import")]
+    [EnableRateLimiting("contributions")]
+    [ProducesResponseType(typeof(CafeDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    public async Task<ActionResult<CafeDetailDto>> ImportFromOsm(
+        [FromBody] ImportOsmCafeRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var cafe = await _cafeService.ImportOsmCafeAsync(request.OsmId, cancellationToken);
+
+            return cafe is null
+                ? Problem(
+                    title: "Cafetería no encontrada",
+                    detail: "Ese elemento no existe en OpenStreetMap o no es una cafetería.",
+                    statusCode: StatusCodes.Status404NotFound)
+                : Ok(cafe);
+        }
+        catch (OsmUnavailableException)
+        {
+            return Problem(
+                title: "OpenStreetMap no responde",
+                detail: "No se pudo consultar OpenStreetMap. Inténtalo de nuevo en unos segundos.",
+                statusCode: StatusCodes.Status502BadGateway);
+        }
+    }
+
+    /// <summary>Añade un plato a la carta de una cafetería. Requiere sesión.</summary>
+    [Authorize]
+    [HttpPost("{id:guid}/menu")]
+    [EnableRateLimiting("contributions")]
+    [ProducesResponseType(typeof(MenuItemDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MenuItemDto>> AddMenuItem(
+        Guid id,
+        [FromBody] CreateMenuItemRequest request,
+        [FromServices] IValidator<CreateMenuItemRequest> validator,
+        CancellationToken cancellationToken)
+    {
+        var validationResult = await validator.ValidateAsync(request, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            throw new ValidationException(validationResult.Errors);
+        }
+
+        var author = await CurrentAuthorAsync();
+        if (author is null)
+        {
+            return Unauthorized();
+        }
+
+        var item = await _cafeService.AddMenuItemAsync(id, request, author, cancellationToken);
+        return item is null ? NotFound() : CreatedAtAction(nameof(GetById), new { id }, item);
+    }
+
+    /// <summary>
+    /// Borra un plato añadido por el propio usuario, si nadie más lo ha puntuado.
+    /// </summary>
+    [Authorize]
+    [HttpDelete("{id:guid}/menu/{itemId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteMenuItem(Guid id, Guid itemId, CancellationToken cancellationToken)
+    {
+        var author = await CurrentAuthorAsync();
+        if (author is null)
+        {
+            return Unauthorized();
+        }
+
+        return await _cafeService.DeleteMenuItemAsync(id, itemId, author.UserId, cancellationToken) switch
+        {
+            CafeService.DeleteMenuItemResult.Deleted => NoContent(),
+            CafeService.DeleteMenuItemResult.Forbidden => Problem(
+                title: "No puedes borrar este plato",
+                detail: "Solo quien añadió un plato puede borrarlo.",
+                statusCode: StatusCodes.Status403Forbidden),
+            CafeService.DeleteMenuItemResult.AlreadyRated => Problem(
+                title: "El plato ya tiene puntuaciones",
+                detail: "Otros usuarios ya lo han puntuado, así que no se puede borrar.",
+                statusCode: StatusCodes.Status409Conflict),
+            _ => NotFound()
+        };
+    }
+
     private async Task<ReviewAuthor?> CurrentAuthorAsync()
     {
         var user = await _userManager.GetUserAsync(User);
-        return user is null ? null : new ReviewAuthor(user.Id, user.DisplayName);
+
+        // Una cuenta bloqueada desde el panel no puede publicar nada.
+        if (user is null || await _userManager.IsLockedOutAsync(user))
+        {
+            return null;
+        }
+
+        return new ReviewAuthor(user.Id, user.DisplayName);
     }
 }

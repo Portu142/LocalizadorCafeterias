@@ -6,6 +6,12 @@ namespace LocalizadorCafes.Domain.Entities;
 public class Cafe : BaseEntity
 {
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Elemento de OpenStreetMap del que procede («node/123», «way/456»), o null
+    /// en los datos de ejemplo. Evita importar dos veces el mismo local.
+    /// </summary>
+    public string? OsmId { get; set; }
     public string Address { get; set; } = string.Empty;
     public string Neighborhood { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;

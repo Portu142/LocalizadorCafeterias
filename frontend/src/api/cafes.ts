@@ -1,5 +1,5 @@
 import { API_URL, USE_API } from '../config';
-import type { Coordinates } from '../lib/geo';
+import { distanceKm, type Coordinates } from '../lib/geo';
 import { queryPhotonCafes } from './photon';
 import { enrichWithOsmTags, queryCafeById, queryOverpassNearby } from './overpass';
 import type {
@@ -7,6 +7,7 @@ import type {
   CafePhoto,
   CafeSummary,
   CreateReviewRequest,
+  MenuItem,
   Review,
   User,
   UserReview,
@@ -154,7 +155,38 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export type CafeSource = 'api' | 'osm';
+export type CafeSource = 'api' | 'osm' | 'mixed';
+
+function normalizeName(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Cafés de OpenStreetMap que no están ya en la base de datos: fuera los que
+ * se importaron (mismo `osmId`) y los de ejemplo que coinciden en nombre y
+ * están a menos de 75 m (el mismo local registrado dos veces).
+ */
+function withoutDuplicates(osmCafes: CafeDetail[], apiCafes: CafeSummary[]): CafeDetail[] {
+  const importedIds = new Set(apiCafes.map((cafe) => cafe.osmId && `osm-${cafe.osmId}`));
+
+  return osmCafes.filter((osmCafe) => {
+    if (importedIds.has(osmCafe.id)) {
+      return false;
+    }
+
+    const name = normalizeName(osmCafe.name);
+    return !apiCafes.some((apiCafe) => {
+      const apiName = normalizeName(apiCafe.name);
+      const sameName = name.includes(apiName) || apiName.includes(name);
+      return sameName && distanceKm(osmCafe, apiCafe) * 1000 <= 75;
+    });
+  });
+}
 
 export type CafeSearchResult = {
   cafes: CafeSummary[];
@@ -191,30 +223,27 @@ export async function fetchCafesWithSource(
     }
 
     const query = params.toString();
-    const cafes = await request<CafeSummary[]>(
-      `/api/cafes${query ? `?${query}` : ''}`,
-    );
 
-    // La base de datos de la API solo cubre Madrid: si no hay cafeterías cerca
-    // de la ubicación real, se completan con OpenStreetMap para que la app sea
-    // útil en cualquier ciudad.
-    if (cafes.length > 0 || !location) {
-      return { cafes, source: 'api' };
+    // La base de datos solo tiene los cafés de ejemplo y los que los usuarios
+    // han guardado al aportar su carta: se mezclan con los de OpenStreetMap de
+    // la zona para que la lista no se quede en unos pocos locales.
+    const [cafes, osmCafes] = await Promise.all([
+      request<CafeSummary[]>(`/api/cafes${query ? `?${query}` : ''}`),
+      location
+        ? queryOpenStreetMap(location).catch(() => [] as CafeDetail[])
+        : Promise.resolve([] as CafeDetail[]),
+    ]);
+
+    const extra = withoutDuplicates(osmCafes, cafes).map(withStoredReviews).map(toSummary);
+
+    if (cafes.length === 0) {
+      return { cafes: extra, source: 'osm' };
     }
 
-    try {
-      const osmCafes = await queryOpenStreetMap(location);
-      if (osmCafes.length > 0) {
-        return {
-          cafes: osmCafes.map(withStoredReviews).map(toSummary),
-          source: 'osm',
-        };
-      }
-    } catch {
-      // OpenStreetMap tampoco respondió: se deja la lista vacía de la API.
-    }
-
-    return { cafes, source: 'api' };
+    return {
+      cafes: [...cafes, ...extra],
+      source: extra.length > 0 ? 'mixed' : 'api',
+    };
   }
 
   // Modo demo sin backend: siempre se consultan cafeterías reales de
@@ -344,8 +373,38 @@ export function resolvePhotoUrl(url: string): string {
   return url.startsWith('/') ? `${API_URL}${url}` : url;
 }
 
-/** Los cafés de la base de datos de la API admiten cuentas, fotos y reseñas
- *  vinculadas; los de OpenStreetMap (`osm-…`) no existen en ella. */
-export function isApiCafe(id: string): boolean {
-  return USE_API && !id.startsWith('osm-');
+
+// ---------------------------------------------------------------------------
+// Carta aportada por la comunidad (solo con la API y con sesión).
+// ---------------------------------------------------------------------------
+
+/** Guarda en la API un café de OpenStreetMap (o devuelve el ya guardado). */
+export function importOsmCafe(osmId: string): Promise<CafeDetail> {
+  return request<CafeDetail>('/api/cafes/import', {
+    method: 'POST',
+    body: JSON.stringify({ osmId }),
+  });
+}
+
+export function addMenuItem(cafeId: string, name: string, price: number): Promise<MenuItem> {
+  return request<MenuItem>(`/api/cafes/${cafeId}/menu`, {
+    method: 'POST',
+    body: JSON.stringify({ name, price }),
+  });
+}
+
+export function deleteMenuItem(cafeId: string, itemId: string): Promise<void> {
+  return request<void>(`/api/cafes/${cafeId}/menu/${itemId}`, { method: 'DELETE' });
+}
+
+/**
+ * Id del café en la base de datos de la API. Si es de OpenStreetMap, lo guarda
+ * primero (el servidor descarga sus datos de OSM) para que reseñas, fotos y
+ * platos queden en la base de datos y los vea el panel de administración.
+ */
+export async function ensureApiCafeId(cafeId: string): Promise<string> {
+  if (USE_API && cafeId.startsWith('osm-')) {
+    return (await importOsmCafe(cafeId)).id;
+  }
+  return cafeId;
 }

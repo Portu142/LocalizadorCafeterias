@@ -1,0 +1,58 @@
+@using LocalizadorCafes.Domain.Entities
+@model PhotoGridModel
+
+@if (Model.Photos.Count == 0)
+{
+    <p class="vacio">No hay fotos en esta vista.</p>
+}
+else
+{
+    <div class="galeria">
+        @foreach (var photo in Model.Photos)
+        {
+            <figure class="tarjeta foto">
+                <a href="@photo.Url" target="_blank" rel="noopener noreferrer">
+                    <img src="@photo.Url" alt="Foto de @photo.CafeName, de @photo.Author" loading="lazy" />
+                </a>
+                <figcaption>
+                    <span class="@AdminPageModel.StatusClass(photo.Status)">@AdminPageModel.StatusLabel(photo.Status)</span>
+                    @if (Model.ShowCafe)
+                    {
+                        <br /><a href="/admin/cafes/@photo.CafeId"><strong>@photo.CafeName</strong></a>
+                    }
+                    <br /><span class="suave pequeno">
+                        @photo.Author · @photo.License · @AdminPageModel.Date(photo.CreatedAt)
+                        @if (photo.UploadedByUserId is Guid userId)
+                        {
+                            <text> · </text><a href="/admin/usuarios/@userId">ver autor</a>
+                        }
+                    </span>
+                </figcaption>
+                <div class="acciones">
+                    @if (photo.Status != ModerationStatus.Approved)
+                    {
+                        <form method="post" asp-page="/Admin/Acciones" asp-page-handler="ApprovePhoto">
+                            <input type="hidden" name="id" value="@photo.Id" />
+                            <input type="hidden" name="volver" value="@Model.ReturnUrl" />
+                            <button type="submit" class="boton aprobar">@(photo.Status == ModerationStatus.Rejected ? "Restaurar" : "Aprobar")</button>
+                        </form>
+                    }
+                    @if (photo.Status != ModerationStatus.Rejected)
+                    {
+                        <form method="post" asp-page="/Admin/Acciones" asp-page-handler="RejectPhoto">
+                            <input type="hidden" name="id" value="@photo.Id" />
+                            <input type="hidden" name="volver" value="@Model.ReturnUrl" />
+                            <button type="submit" class="boton secundario">@(photo.Status == ModerationStatus.Approved ? "Ocultar" : "Rechazar")</button>
+                        </form>
+                    }
+                    <form method="post" asp-page="/Admin/Acciones" asp-page-handler="DeletePhoto"
+                          data-confirmar="¿Borrar esta foto definitivamente? No se puede deshacer.">
+                        <input type="hidden" name="id" value="@photo.Id" />
+                        <input type="hidden" name="volver" value="@Model.ReturnUrl" />
+                        <button type="submit" class="boton rechazar">Borrar</button>
+                    </form>
+                </div>
+            </figure>
+        }
+    </div>
+}

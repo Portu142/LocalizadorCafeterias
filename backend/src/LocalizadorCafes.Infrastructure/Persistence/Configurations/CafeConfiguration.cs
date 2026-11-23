@@ -16,6 +16,14 @@ public class CafeConfiguration : IEntityTypeConfiguration<Cafe>
             .HasMaxLength(120)
             .IsRequired();
 
+        builder.Property(cafe => cafe.OsmId)
+            .HasMaxLength(40);
+
+        // Un mismo elemento de OSM solo puede importarse una vez.
+        builder.HasIndex(cafe => cafe.OsmId)
+            .IsUnique()
+            .HasFilter("\"OsmId\" IS NOT NULL");
+
         builder.Property(cafe => cafe.Address)
             .HasMaxLength(200)
             .IsRequired();

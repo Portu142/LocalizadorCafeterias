@@ -115,7 +115,7 @@ public class CafePhotoUploadTests
             .ReturnsAsync(cafe);
         var storage = new Mock<IPhotoStorage>();
 
-        return (new CafeService(repository.Object, storage.Object), repository, storage);
+        return (new CafeService(repository.Object, storage.Object, Mock.Of<IOsmCafeSource>()), repository, storage);
     }
 
     private static Cafe CreateCafe() => new()

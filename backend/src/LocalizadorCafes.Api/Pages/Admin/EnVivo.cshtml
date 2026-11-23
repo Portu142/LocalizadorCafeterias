@@ -1,0 +1,14 @@
+@page "/admin/en-vivo"
+@model EnVivoModel
+@{
+    ViewData["Title"] = "En vivo";
+}
+<h1>En vivo</h1>
+<p class="suave">
+    Personas usando la web ahora mismo, con o sin cuenta. Se actualiza solo cada 5 segundos.
+    Sin cuenta se cuenta cada sesión del navegador con un número aleatorio; no se guardan IPs ni historial.
+</p>
+
+<div id="en-vivo" data-refrescar="/admin/en-vivo?handler=Fragmento">
+    <partial name="_EnVivoContenido" model="Model.View" />
+</div>

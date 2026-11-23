@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { CheckCircle2, Loader2, LogIn, Send } from 'lucide-react';
-import { ApiError, isApiCafe } from '../api/cafes';
+import { ApiError } from '../api/cafes';
+import { USE_API } from '../config';
 import { useCurrentUser, useForgetUser } from '../hooks/useAuth';
 import { useCreateReview } from '../hooks/useCreateReview';
 import type { MenuItem } from '../types/cafe';
@@ -11,6 +12,8 @@ type ReviewFormProps = {
   menu: MenuItem[];
   /** Abre la ventana de inicio de sesión. */
   onRequestLogin: () => void;
+  /** El café era de OpenStreetMap y se ha guardado en la API con este id. */
+  onCafeImported?: (newId: string) => void;
 };
 
 type FieldErrors = {
@@ -18,10 +21,11 @@ type FieldErrors = {
   comment?: string;
 };
 
-export function ReviewForm({ cafeId, menu, onRequestLogin }: ReviewFormProps) {
-  // Los cafés de la API exigen cuenta: la reseña se firma con su nombre.
-  // Los de OpenStreetMap (y la demo sin API) se guardan en el navegador.
-  const requiresAccount = isApiCafe(cafeId);
+export function ReviewForm({ cafeId, menu, onRequestLogin, onCafeImported }: ReviewFormProps) {
+  // Con la API, toda reseña exige cuenta y se guarda en la base de datos
+  // (también en cafés de OpenStreetMap, que se guardan al reseñarlos). Solo
+  // la demo sin API las guarda en el navegador.
+  const requiresAccount = USE_API;
   const { data: user } = useCurrentUser();
   const forgetUser = useForgetUser();
   const [author, setAuthor] = useState('');
@@ -32,7 +36,7 @@ export function ReviewForm({ cafeId, menu, onRequestLogin }: ReviewFormProps) {
   const [success, setSuccess] = useState(false);
   const authorRef = useRef<HTMLInputElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
-  const mutation = useCreateReview(cafeId);
+  const mutation = useCreateReview(cafeId, onCafeImported);
 
   const validate = () => {
     const nextErrors: FieldErrors = {};

@@ -1,0 +1,29 @@
+@page "/admin/login"
+@model LoginModel
+@{
+    ViewData["Title"] = "Iniciar sesión";
+    ViewData["SinMenu"] = true;
+}
+<section class="tarjeta acceso">
+    <p class="marca-grande">☕ Localizador de Cafés</p>
+    <h1>Panel de administración</h1>
+    <p class="suave">Entra con una cuenta de administrador.</p>
+
+    @if (Model.Error is not null)
+    {
+        <p class="error" role="alert">@Model.Error</p>
+    }
+
+    <form method="post" novalidate>
+        <input type="hidden" asp-for="ReturnUrl" />
+        <label asp-for="Email">Email</label>
+        <input asp-for="Email" type="email" autocomplete="username" autofocus />
+        <span asp-validation-for="Email" class="error-campo"></span>
+
+        <label asp-for="Password">Contraseña</label>
+        <input asp-for="Password" autocomplete="current-password" />
+        <span asp-validation-for="Password" class="error-campo"></span>
+
+        <button type="submit" class="boton">Entrar</button>
+    </form>
+</section>

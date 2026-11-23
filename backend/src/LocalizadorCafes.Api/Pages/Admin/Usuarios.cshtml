@@ -1,0 +1,70 @@
+@page "/admin/usuarios"
+@model UsuariosModel
+@{
+    ViewData["Title"] = "Usuarios";
+}
+<h1>Usuarios</h1>
+<p class="suave">Cuentas registradas. Una cuenta suspendida no puede iniciar sesión ni publicar, y sus sesiones abiertas caducan en menos de un minuto.</p>
+
+<form method="get" class="buscador" role="search">
+    <label for="q" class="oculto">Buscar usuarios</label>
+    <input id="q" name="q" value="@Model.Query" type="search" placeholder="Buscar por nombre o email…" maxlength="100" />
+    <button type="submit" class="boton secundario">Buscar</button>
+    @if (!string.IsNullOrEmpty(Model.Query))
+    {
+        <a href="@Model.WithQuery("q", null)">Quitar búsqueda</a>
+    }
+</form>
+
+@if (Model.Result.Items.Count == 0)
+{
+    <p class="vacio">No hay cuentas que coincidan.</p>
+}
+else
+{
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th scope="col">Nombre</th>
+                <th scope="col">Email</th>
+                <th scope="col">Alta</th>
+                <th scope="col">Estado</th>
+                <th scope="col"><span class="oculto">Acciones</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model.Result.Items)
+            {
+                <tr>
+                    <td data-label="Nombre">
+                        <a href="/admin/usuarios/@user.Id"><strong>@user.DisplayName</strong></a>
+                        @if (user.Id == Model.CurrentUserId)
+                        {
+                            <span class="etiqueta">tú</span>
+                        }
+                    </td>
+                    <td data-label="Email">@user.Email</td>
+                    <td data-label="Alta">@AdminPageModel.Date(user.CreatedAt)</td>
+                    <td data-label="Estado">
+                        @if (user.IsAdmin)
+                        {
+                            <span class="estado publicado">Administrador</span>
+                        }
+                        @if (user.IsSuspended)
+                        {
+                            <span class="estado rechazado">Suspendida</span>
+                        }
+                        else if (!user.IsAdmin)
+                        {
+                            <span class="suave">Activa</span>
+                        }
+                    </td>
+                    <td class="acciones">
+                        <partial name="_AccionesUsuario" model="(user.Id, user.DisplayName, user.IsAdmin, user.IsSuspended, user.Id == Model.CurrentUserId, Model.CurrentUrl)" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<partial name="_Paginacion" model="new PagerModel(Model.Result.Page, Model.Result.TotalPages, Model.Result.Total, Model.PageUrl)" />

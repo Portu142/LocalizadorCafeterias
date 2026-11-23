@@ -1,0 +1,126 @@
+@using System.Globalization
+@model EnVivoModel.LiveView
+@{
+    var snapshot = Model.Snapshot;
+    var history = snapshot.History;
+    var spanish = CultureInfo.GetCultureInfo("es-ES");
+    string N(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+    string Ago(DateTimeOffset when)
+    {
+        var seconds = Math.Max(0, (int)(snapshot.At - when).TotalSeconds);
+        return seconds < 5 ? "ahora" : $"hace {seconds} s";
+    }
+
+    // Una barra por minuto (30 minutos), mismo estilo que las gráficas semanales.
+    const double width = 640, height = 130, top = 8, bottom = 22;
+    var max = Math.Max(1, history.Max(minute => minute.Visitors));
+    var slot = width / history.Count;
+    var barWidth = Math.Max(3, slot - 2);
+    var plotHeight = height - top - bottom;
+    string BarPath(double x, double y, double w, double h)
+    {
+        var r = Math.Min(3, Math.Min(w / 2, h));
+        var baseline = top + plotHeight;
+        return $"M{N(x)},{N(baseline)} V{N(y + r)} Q{N(x)},{N(y)} {N(x + r)},{N(y)} H{N(x + w - r)} Q{N(x + w)},{N(y)} {N(x + w)},{N(y + r)} V{N(baseline)} Z";
+    }
+}
+
+<p class="suave pequeno en-vivo-hora">Actualizado a las @snapshot.At.ToLocalTime().ToString("HH:mm:ss", spanish)</p>
+
+<div class="rejilla">
+    <div class="tarjeta dato en-vivo-total">
+        <span class="numero"><span class="punto-vivo" aria-hidden="true"></span>@snapshot.Total</span>
+        <span>personas activas ahora</span>
+    </div>
+    <div class="tarjeta dato">
+        <span class="numero">@snapshot.Registered</span>
+        <span>con cuenta</span>
+    </div>
+    <div class="tarjeta dato">
+        <span class="numero">@snapshot.Anonymous</span>
+        <span>sin cuenta</span>
+    </div>
+</div>
+
+<figure class="tarjeta grafica seccion" aria-labelledby="titulo-minutos">
+    <figcaption id="titulo-minutos">
+        <span class="grafica-titulo">Visitantes por minuto (últimos @history.Count minutos)</span>
+        <span class="suave pequeno">Máximo: @history.Max(minute => minute.Visitors) por minuto</span>
+    </figcaption>
+    <svg viewBox="0 0 @N(width) @N(height)" role="img" aria-labelledby="titulo-minutos" class="grafica-svg">
+        <line x1="0" x2="@N(width)" y1="@N(top + plotHeight)" y2="@N(top + plotHeight)" class="grafica-eje" />
+        @for (var index = 0; index < history.Count; index++)
+        {
+            var minute = history[index];
+            var x = index * slot + (slot - barWidth) / 2;
+            var h = minute.Visitors == 0 ? 0 : Math.Max(2, minute.Visitors / (double)max * plotHeight);
+            <g class="grafica-barra">
+                <title>@minute.Minute.ToLocalTime().ToString("HH:mm", spanish): @minute.Visitors @(minute.Visitors == 1 ? "visitante" : "visitantes")</title>
+                <rect x="@N(index * slot)" y="@N(top)" width="@N(slot)" height="@N(plotHeight)" class="grafica-zona" />
+                @if (h > 0)
+                {
+                    <path d="@BarPath(x, top + plotHeight - h, barWidth, h)" class="@(index == history.Count - 1 ? "grafica-relleno actual" : "grafica-relleno")" />
+                }
+            </g>
+        }
+        <text x="0" y="@N(height - 6)" class="grafica-etiqueta">@history[0].Minute.ToLocalTime().ToString("HH:mm", spanish)</text>
+        <text x="@N(width)" y="@N(height - 6)" text-anchor="end" class="grafica-etiqueta">Ahora</text>
+    </svg>
+</figure>
+
+<div class="rejilla dos-columnas seccion">
+    <section class="tarjeta" aria-labelledby="titulo-conectados">
+        <h2 id="titulo-conectados">Usuarios con cuenta conectados</h2>
+        @if (snapshot.Users.Count == 0)
+        {
+            <p class="suave">Ahora mismo no hay nadie con sesión iniciada.</p>
+        }
+        else
+        {
+            <ul class="lista-simple">
+                @foreach (var user in snapshot.Users.OrderByDescending(user => user.LastSeen))
+                {
+                    var known = Model.Users.TryGetValue(user.UserId, out var info);
+                    <li>
+                        <a href="/admin/usuarios/@user.UserId"><strong>@(known ? info.Name : "Cuenta eliminada")</strong></a>
+                        @if (known)
+                        {
+                            <span class="suave pequeno">@info.Email</span>
+                        }
+                        <br />
+                        <span class="suave pequeno">
+                            @(string.IsNullOrEmpty(user.ViewingCafe) ? "Navegando" : $"Viendo {user.ViewingCafe}") · @Ago(user.LastSeen)
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section class="tarjeta" aria-labelledby="titulo-vistas">
+        <h2 id="titulo-vistas">Cafeterías que se están viendo</h2>
+        @if (snapshot.Cafes.Count == 0)
+        {
+            <p class="suave">Nadie tiene abierta la ficha de una cafetería ahora mismo.</p>
+        }
+        else
+        {
+            <ul class="lista-simple">
+                @foreach (var cafe in snapshot.Cafes)
+                {
+                    <li>
+                        @if (Guid.TryParse(cafe.CafeId, out var cafeId))
+                        {
+                            <a href="/admin/cafes/@cafeId"><strong>@cafe.Name</strong></a>
+                        }
+                        else
+                        {
+                            <strong>@cafe.Name</strong> <span class="etiqueta">OpenStreetMap</span>
+                        }
+                        <span class="suave">· @cafe.Viewers @(cafe.Viewers == 1 ? "persona" : "personas")</span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+</div>

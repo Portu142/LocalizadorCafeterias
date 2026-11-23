@@ -14,4 +14,5 @@ public record CafeDetailDto(
     IReadOnlyList<string> Tags,
     IReadOnlyList<CafePhotoDto> Photos,
     IReadOnlyList<MenuItemDto> Menu,
-    IReadOnlyList<ReviewDto> Reviews);
+    IReadOnlyList<ReviewDto> Reviews,
+    string? OsmId = null);

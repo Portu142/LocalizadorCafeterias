@@ -1,0 +1,44 @@
+@model ReviewListModel
+
+@if (Model.Reviews.Count == 0)
+{
+    <p class="vacio">No hay reseñas en esta vista.</p>
+}
+else
+{
+    <ul class="lista">
+        @foreach (var review in Model.Reviews)
+        {
+            <li class="tarjeta resena">
+                <div class="resena-cabecera">
+                    <div>
+                        @if (review.UserId is Guid userId)
+                        {
+                            <a href="/admin/usuarios/@userId"><strong>@review.Author</strong></a>
+                        }
+                        else
+                        {
+                            <strong>@review.Author</strong>
+                        }
+                        @if (Model.ShowCafe)
+                        {
+                            <span class="suave">en</span> <a href="/admin/cafes/@review.CafeId"><strong>@review.CafeName</strong></a>
+                        }
+                        <div class="suave pequeno">
+                            @AdminPageModel.Date(review.CreatedAt) ·
+                            <span class="estrellas" aria-label="@review.Rating de 5 estrellas">@(new string('★', review.Rating))@(new string('☆', 5 - review.Rating))</span>
+                        </div>
+                    </div>
+                    <form method="post" asp-page="/Admin/Acciones" asp-page-handler="DeleteReview"
+                          data-confirmar="¿Borrar la reseña de @review.Author? No se puede deshacer.">
+                        <input type="hidden" name="id" value="@review.Id" />
+                        <input type="hidden" name="author" value="@review.Author" />
+                        <input type="hidden" name="volver" value="@Model.ReturnUrl" />
+                        <button type="submit" class="boton rechazar">Borrar</button>
+                    </form>
+                </div>
+                <p>@review.Comment</p>
+            </li>
+        }
+    </ul>
+}

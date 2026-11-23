@@ -1,0 +1,36 @@
+@page "/admin/contrasena"
+@model ContrasenaModel
+@{
+    ViewData["Title"] = "Contraseña";
+}
+<h1>Cambiar contraseña</h1>
+<p class="suave">Si entraste con la contraseña inicial generada automáticamente, cámbiala aquí.</p>
+
+<section class="tarjeta formulario">
+    @if (Model.Errors.Count > 0)
+    {
+        <div class="error" role="alert">
+            @foreach (var error in Model.Errors)
+            {
+                <p>@error</p>
+            }
+        </div>
+    }
+
+    <form method="post" novalidate>
+        <label asp-for="Current">Contraseña actual</label>
+        <input asp-for="Current" autocomplete="current-password" />
+        <span asp-validation-for="Current" class="error-campo"></span>
+
+        <label asp-for="NewPassword">Contraseña nueva</label>
+        <input asp-for="NewPassword" autocomplete="new-password" aria-describedby="ayuda-contrasena" />
+        <span id="ayuda-contrasena" class="suave pequeno">Mínimo 8 caracteres con al menos un número.</span>
+        <span asp-validation-for="NewPassword" class="error-campo"></span>
+
+        <label asp-for="Confirm">Repite la contraseña nueva</label>
+        <input asp-for="Confirm" autocomplete="new-password" />
+        <span asp-validation-for="Confirm" class="error-campo"></span>
+
+        <button type="submit" class="boton">Cambiar contraseña</button>
+    </form>
+</section>
