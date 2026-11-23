@@ -1,17 +1,32 @@
-# Dependencias y artefactos
+# Dependencias y artefactos de compilación
 **/node_modules
 **/dist
 **/bin
 **/obj
+*.tsbuildinfo
+
+# Resultados de tests y cobertura
+**/TestResults/
+**/coverage/
+
+# Editores e IDE (se comparte solo la lista de extensiones recomendadas de VS Code)
 **/.vs
-**/.vscode
+**/.idea/
+**/.vscode/*
+!**/.vscode/extensions.json
 *.user
+*.suo
+
+# Configuración local de Claude Code (servidores de vista previa, permisos personales)
+.claude/settings.local.json
+.claude/launch.json
 
 # SDK local de .NET (se instala con dotnet-install.ps1)
 .dotnet/
 dotnet-install.ps1
 
-# Variables de entorno
+# Variables de entorno: nunca se suben. Las de ejemplo y la del túnel no
+# contienen secretos.
 .env
 .env.*
 !.env.example
@@ -23,9 +38,6 @@ dotnet-install.ps1
 Thumbs.db
 *.log
 
-# Herramientas
-frontend/node_modules/.tmp
-frontend/tsconfig.tsbuildinfo
-
-# Fotos subidas y claves de sesión de la API
+# Datos de ejecución de la API: fotos subidas, claves que cifran la sesión y
+# credenciales del administrador inicial (admin-inicial.txt).
 **/App_Data/
