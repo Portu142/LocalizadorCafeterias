@@ -20,8 +20,6 @@ carta colaborativa moderada y panel de administración en tiempo real.
 
 ![Vista de escritorio: filtros, listado, mapa y ficha de una cafetería](docs/screenshots/desktop.jpg)
 
-</div>
-
 > [!NOTE]
 > La demo de GitHub Pages es **estática** (sin backend): muestra cafeterías reales de OpenStreetMap
 > cerca de ti, pero las cuentas, la carta colaborativa, la subida de fotos y el panel de administración
